@@ -19,7 +19,7 @@ async function triggerHaptic(type = 'light') {
       return;
     }
   } catch (e) {
-    // Capacitor bridge not present, fallback to HTML5 Vibration API
+    // Fallback to HTML5 Vibration API
   }
 
   if (navigator.vibrate) {
@@ -39,6 +39,8 @@ let currentStep = 1;
 let activeCardElement = null;
 let confirmCallback = null;
 let lastBackPressTime = 0;
+let isWheelPointerDown = false;
+let colorWheelDrawn = false;
 
 // Intro Splash Elements
 const appIntro = document.getElementById('app-intro');
@@ -77,8 +79,11 @@ const inputCounterName = document.getElementById('input-counter-name');
 const inputCounterInitial = document.getElementById('input-counter-initial');
 const inputCounterTarget = document.getElementById('input-counter-target');
 const btnDeleteCounter = document.getElementById('btn-delete-counter');
-const colorDots = document.querySelectorAll('.color-dot');
-const inputCustomColor = document.getElementById('input-custom-color');
+
+// Interactive Color Wheel Elements
+const colorWheelStage = document.getElementById('color-wheel-stage');
+const colorWheelCanvas = document.getElementById('color-wheel-canvas');
+const colorWheelCursor = document.getElementById('color-wheel-cursor');
 const inputCounterHex = document.getElementById('input-counter-hex');
 const hexPreviewDot = document.getElementById('hex-preview-dot');
 let selectedColor = '#10b981';
@@ -112,7 +117,7 @@ function init() {
   updateDateDisplay();
   renderCounters();
   updateMidnightBadge();
-  syncStateToAndroid();
+  syncStateToAndroid(false);
 
   // Play cinematic intro sequence
   runAppIntroSequence();
@@ -123,10 +128,10 @@ function init() {
     if (activeCounterId) {
       updateDetailView(activeCounterId);
     }
-    syncStateToAndroid();
   });
 
   attachEventListeners();
+  initColorWheel();
 }
 
 // Cinematic Intro Splash Sequence
@@ -178,7 +183,7 @@ function updateMidnightBadge() {
   }
 }
 
-// Render Counters Grid
+// Render Counters Grid (Home selection menu - without increment button)
 function renderCounters() {
   const counters = store.getCounters();
 
@@ -210,12 +215,6 @@ function renderCounters() {
           </div>
           <div class="counter-card-right">
             <span class="counter-card-count">${c.count}</span>
-            <button class="card-quick-plus" data-quick-id="${c.id}" aria-label="Increment ${escapeHtml(c.name)}">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </button>
           </div>
         </div>
       `;
@@ -235,8 +234,7 @@ function openCounterDetail(counterId, cardElement) {
 
   // Populate data
   updateDetailView(counterId);
-  sound.playNav();
-  syncStateToAndroid();
+  syncStateToAndroid(true);
 
   // Push history state for back navigation & swipe gestures
   try {
@@ -255,13 +253,11 @@ function openCounterDetail(counterId, cardElement) {
       height: window.innerHeight,
     };
 
-    // Calculate scale and position delta
     const scaleX = cardRect.width / targetRect.width;
     const scaleY = cardRect.height / targetRect.height;
     const transX = cardRect.left + cardRect.width / 2 - window.innerWidth / 2;
     const transY = cardRect.top + cardRect.height / 2 - window.innerHeight / 2;
 
-    // Apply initial morph state
     counterDetailView.style.transition = 'none';
     counterDetailView.style.transform = `translate(${transX}px, ${transY}px) scale(${scaleX}, ${scaleY})`;
     counterDetailView.style.borderRadius = '24px';
@@ -270,10 +266,8 @@ function openCounterDetail(counterId, cardElement) {
     counterDetailView.classList.add('active');
     counterDetailView.setAttribute('aria-hidden', 'false');
 
-    // Force reflow
     void counterDetailView.offsetHeight;
 
-    // Transition to full screen
     requestAnimationFrame(() => {
       counterDetailView.style.transition = 'transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease, border-radius 0.38s ease';
       counterDetailView.style.transform = 'translate(0px, 0px) scale(1, 1)';
@@ -298,7 +292,8 @@ function closeCounterDetail(popHistory = true) {
     return;
   }
 
-  sound.playNav();
+  // Deactivate native volume counting when returning to home menu
+  syncStateToAndroid(false);
 
   if (activeCardElement) {
     const cardRect = activeCardElement.getBoundingClientRect();
@@ -320,7 +315,6 @@ function closeCounterDetail(popHistory = true) {
       counterDetailView.style.opacity = '';
       activeCounterId = null;
       activeCardElement = null;
-      syncStateToAndroid();
     }, 320);
   } else {
     counterDetailView.classList.add('closing');
@@ -328,7 +322,6 @@ function closeCounterDetail(popHistory = true) {
       counterDetailView.classList.remove('active', 'closing');
       counterDetailView.setAttribute('aria-hidden', 'true');
       activeCounterId = null;
-      syncStateToAndroid();
     }, 320);
   }
 }
@@ -374,7 +367,7 @@ function updateStepChipsUI() {
 // Trigger count bump
 function animateNumberBump() {
   detailCountNum.classList.remove('bump');
-  void detailCountNum.offsetWidth; // trigger reflow
+  void detailCountNum.offsetWidth;
   detailCountNum.classList.add('bump');
 }
 
@@ -389,61 +382,201 @@ function showToast(message) {
 
 // Modals management
 function openModal(modal) {
-  sound.playNav();
   modal.classList.remove('hidden');
 }
 
 function closeModal(modal) {
-  sound.playNav();
   modal.classList.add('hidden');
 }
 
-// Color Management (Preset dots, Color Wheel, Hex input)
-function setSelectedColor(color, source = 'preset') {
-  let hex = color;
-  if (!hex.startsWith('#')) hex = '#' + hex;
-  hex = hex.toLowerCase();
+// ================= Interactive Hex Color Wheel Engine =================
+function hsvToRgb(h, s, v) {
+  let f = (n, k = (n + h / 60) % 6) => v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+  let r = Math.round(f(5) * 255);
+  let g = Math.round(f(3) * 255);
+  let b = Math.round(f(1) * 255);
+  return [r, g, b];
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  let max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, v = max;
+  let d = max - min;
+  s = max === 0 ? 0 : d / max;
+  if (max !== min) {
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return [h, s, v];
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToRgb(hex) {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  if (hex.length !== 6) return [16, 185, 129];
+  let num = parseInt(hex, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+function drawColorWheel() {
+  if (!colorWheelCanvas || colorWheelDrawn) return;
+  const ctx = colorWheelCanvas.getContext('2d');
+  const size = 200;
+  const radius = 96;
+  const center = 100;
+  const imgData = ctx.createImageData(size, size);
+  const data = imgData.data;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x - center;
+      const dy = y - center;
+      const dist = Math.hypot(dx, dy);
+      const idx = (y * size + x) * 4;
+
+      if (dist <= radius) {
+        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        if (angle < 0) angle += 360;
+        const sat = Math.min(1, dist / radius);
+        const [r, g, b] = hsvToRgb(angle, sat, 1.0);
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        if (dist > radius - 1) {
+          data[idx + 3] = Math.round(255 * (radius - dist));
+        } else {
+          data[idx + 3] = 255;
+        }
+      } else {
+        data[idx + 3] = 0;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  colorWheelDrawn = true;
+}
+
+function handleWheelPointer(clientX, clientY) {
+  if (!colorWheelCanvas) return;
+  const rect = colorWheelCanvas.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = clientX - centerX;
+  const dy = clientY - centerY;
+  const dist = Math.hypot(dx, dy);
+  const radius = rect.width * 0.48;
+
+  let angle = Math.atan2(dy, dx);
+  let deg = angle * (180 / Math.PI);
+  if (deg < 0) deg += 360;
+
+  const clampedDist = Math.min(dist, radius);
+  const sat = clampedDist / radius;
+  const [r, g, b] = hsvToRgb(deg, sat, 1.0);
+  const hex = rgbToHex(r, g, b);
+
+  // Position cursor relative to 200x200 canvas
+  const cursorX = 100 + Math.cos(angle) * (clampedDist * (100 / (rect.width / 2)));
+  const cursorY = 100 + Math.sin(angle) * (clampedDist * (100 / (rect.height / 2)));
+  if (colorWheelCursor) {
+    colorWheelCursor.style.left = `${cursorX}px`;
+    colorWheelCursor.style.top = `${cursorY}px`;
+  }
 
   selectedColor = hex;
+  if (hexPreviewDot) hexPreviewDot.style.backgroundColor = hex;
+  if (inputCounterHex) inputCounterHex.value = hex.replace('#', '').toUpperCase();
+}
 
-  // Update preset dots active state
-  let matchedPreset = false;
-  colorDots.forEach(d => {
-    if (d.dataset.color.toLowerCase() === hex) {
-      d.classList.add('active');
-      matchedPreset = true;
-    } else {
-      d.classList.remove('active');
-    }
-  });
+function setColorWheelFromHex(hex) {
+  if (!hex) hex = '#10b981';
+  if (!hex.startsWith('#')) hex = '#' + hex;
+  selectedColor = hex.toLowerCase();
 
-  // Update native color input
-  if (source !== 'wheel' && inputCustomColor) {
-    inputCustomColor.value = hex;
+  const [r, g, b] = hexToRgb(hex);
+  const [h, s, v] = rgbToHsv(r, g, b);
+
+  const radius = 92;
+  const angle = h * (Math.PI / 180);
+  const dist = s * radius;
+  const cursorX = 100 + Math.cos(angle) * dist;
+  const cursorY = 100 + Math.sin(angle) * dist;
+
+  if (colorWheelCursor) {
+    colorWheelCursor.style.left = `${cursorX}px`;
+    colorWheelCursor.style.top = `${cursorY}px`;
+  }
+  if (hexPreviewDot) hexPreviewDot.style.backgroundColor = hex;
+  if (inputCounterHex) inputCounterHex.value = hex.replace('#', '').toUpperCase();
+}
+
+function initColorWheel() {
+  drawColorWheel();
+
+  if (colorWheelStage) {
+    colorWheelStage.addEventListener('pointerdown', e => {
+      isWheelPointerDown = true;
+      try { colorWheelStage.setPointerCapture(e.pointerId); } catch (err) {}
+      handleWheelPointer(e.clientX, e.clientY);
+    });
+
+    colorWheelStage.addEventListener('pointermove', e => {
+      if (isWheelPointerDown) {
+        handleWheelPointer(e.clientX, e.clientY);
+      }
+    });
+
+    const endPointer = e => {
+      if (isWheelPointerDown) {
+        isWheelPointerDown = false;
+        try { colorWheelStage.releasePointerCapture(e.pointerId); } catch (err) {}
+      }
+    };
+    colorWheelStage.addEventListener('pointerup', endPointer);
+    colorWheelStage.addEventListener('pointercancel', endPointer);
   }
 
-  // Update hex input
-  if (source !== 'hex' && inputCounterHex) {
-    inputCounterHex.value = hex.replace('#', '').toUpperCase();
-  }
+  if (inputCounterHex) {
+    inputCounterHex.addEventListener('input', e => {
+      let raw = e.target.value.replace(/[^0-9a-fA-F]/g, '');
+      if (raw.length > 6) raw = raw.slice(0, 6);
+      e.target.value = raw.toUpperCase();
 
-  // Update preview dot
-  if (hexPreviewDot) {
-    hexPreviewDot.style.backgroundColor = hex;
+      if (raw.length === 6 || raw.length === 3) {
+        let fullHex = '#' + raw;
+        if (raw.length === 3) {
+          fullHex = '#' + raw.split('').map(ch => ch + ch).join('');
+        }
+        setColorWheelFromHex(fullHex);
+      }
+    });
   }
 }
 
-// Sync with native Android
-function syncStateToAndroid() {
+// Sync with native Android (passing isSelected state)
+function syncStateToAndroid(isSelected = !!activeCounterId) {
   if (window.AndroidBridge) {
     try {
+      const counter = activeCounterId ? store.getCounterById(activeCounterId) : null;
+      const count = counter ? counter.count : 0;
+      const step = activeCounterId ? currentStep : 1;
+
+      if (typeof window.AndroidBridge.setActiveCounter === 'function') {
+        window.AndroidBridge.setActiveCounter(activeCounterId || '', count, step, isSelected);
+      }
       if (typeof window.AndroidBridge.setVolumeCountingEnabled === 'function') {
         window.AndroidBridge.setVolumeCountingEnabled(!!store.settings.volumeKeys);
-      }
-      const counters = store.getCounters();
-      const target = activeCounterId ? store.getCounterById(activeCounterId) : (counters[0] || null);
-      if (target && typeof window.AndroidBridge.setActiveCounter === 'function') {
-        window.AndroidBridge.setActiveCounter(target.id, target.count, activeCounterId ? currentStep : 1);
       }
     } catch (e) {
       console.warn('Android bridge sync notice:', e);
@@ -451,22 +584,38 @@ function syncStateToAndroid() {
   }
 }
 
-// Global handler for volume buttons (called from native Android dispatchKeyEvent or background receiver)
+// Callback from native Android (works with screen ON and screen OFF)
+window.syncCountFromNative = function(id, count, action) {
+  if (!id) return;
+  const counter = store.getCounterById(id);
+  if (!counter) return;
+
+  counter.count = count;
+  store.saveCounters();
+
+  if (activeCounterId === id) {
+    updateDetailView(id);
+    if (action === 'up' || action === 'down') {
+      animateNumberBump();
+    }
+    if (action === 'up' && counter.target && count >= counter.target && (count - (counter.step || 1)) < counter.target) {
+      sound.playMilestone();
+      triggerHaptic('success');
+      showToast('Daily Goal Reached! 🎉');
+    }
+  }
+};
+
+// Global handler for volume buttons when screen is ON
 window.handleVolumeKey = function(direction) {
-  if (!store.settings.volumeKeys) return;
-
-  const counters = store.getCounters();
-  if (counters.length === 0) return;
-
-  const targetId = activeCounterId || counters[0].id;
-  const step = activeCounterId ? currentStep : 1;
+  if (!store.settings.volumeKeys || !activeCounterId) return;
 
   if (direction === 'up') {
-    const res = store.incrementCounter(targetId, step);
+    const res = store.incrementCounter(activeCounterId, currentStep);
     if (res) {
       sound.playClick();
       triggerHaptic('light');
-      if (activeCounterId) animateNumberBump();
+      animateNumberBump();
       if (res.reachedTarget) {
         sound.playMilestone();
         triggerHaptic('success');
@@ -474,36 +623,19 @@ window.handleVolumeKey = function(direction) {
       }
     }
   } else if (direction === 'down') {
-    store.decrementCounter(targetId, step);
+    store.decrementCounter(activeCounterId, currentStep);
     sound.playDecrement();
     triggerHaptic('medium');
-    if (activeCounterId) animateNumberBump();
+    animateNumberBump();
   }
 
-  syncStateToAndroid();
+  syncStateToAndroid(true);
 };
 
 // Attach Event Listeners
 function attachEventListeners() {
-  // Counters Grid click (Delegation)
+  // Counters Grid card click
   countersGrid.addEventListener('click', e => {
-    const quickBtn = e.target.closest('.card-quick-plus');
-    if (quickBtn) {
-      e.stopPropagation();
-      const id = quickBtn.dataset.quickId;
-      const res = store.incrementCounter(id, 1);
-      if (res) {
-        sound.playClick();
-        triggerHaptic('light');
-        if (res.reachedTarget) {
-          sound.playMilestone();
-          triggerHaptic('success');
-          showToast('Goal reached! 🎉');
-        }
-      }
-      return;
-    }
-
     const card = e.target.closest('.counter-card');
     if (card) {
       const id = card.dataset.id;
@@ -522,6 +654,7 @@ function attachEventListeners() {
       sound.playClick();
       triggerHaptic('light');
       animateNumberBump();
+      syncStateToAndroid(true);
       if (res.reachedTarget) {
         sound.playMilestone();
         triggerHaptic('success');
@@ -538,6 +671,7 @@ function attachEventListeners() {
     sound.playDecrement();
     triggerHaptic('medium');
     animateNumberBump();
+    syncStateToAndroid(true);
   });
 
   // Reset current counter button
@@ -547,6 +681,7 @@ function attachEventListeners() {
     showConfirm('Reset Counter', 'Reset this counter to 0?', () => {
       store.resetCounter(activeCounterId);
       triggerHaptic('medium');
+      syncStateToAndroid(true);
       showToast('Counter reset to 0');
     });
   });
@@ -563,7 +698,8 @@ function attachEventListeners() {
     inputCounterName.value = counter.name;
     inputCounterInitial.value = counter.count;
     inputCounterTarget.value = counter.target || '';
-    setSelectedColor(counter.color || '#10b981');
+    drawColorWheel();
+    setColorWheelFromHex(counter.color || '#10b981');
     btnDeleteCounter.classList.remove('hidden');
     openModal(modalCounter);
   });
@@ -609,9 +745,9 @@ function attachEventListeners() {
       e.stopPropagation();
       currentStep = parseInt(chip.dataset.step, 10);
       updateStepChipsUI();
-      sound.playNav();
       if (activeCounterId) {
         store.updateCounter(activeCounterId, { step: currentStep });
+        syncStateToAndroid(true);
       }
       triggerHaptic('light');
     });
@@ -623,7 +759,8 @@ function attachEventListeners() {
     formCounter.reset();
     inputCounterId.value = '';
     inputCounterInitial.value = '0';
-    setSelectedColor('#10b981');
+    drawColorWheel();
+    setColorWheelFromHex('#10b981');
     btnDeleteCounter.classList.add('hidden');
     openModal(modalCounter);
   });
@@ -633,45 +770,11 @@ function attachEventListeners() {
     formCounter.reset();
     inputCounterId.value = '';
     inputCounterInitial.value = '0';
-    setSelectedColor('#10b981');
+    drawColorWheel();
+    setColorWheelFromHex('#10b981');
     btnDeleteCounter.classList.add('hidden');
     openModal(modalCounter);
   });
-
-  // Preset Color dots click
-  colorDots.forEach(dot => {
-    dot.addEventListener('click', () => {
-      setSelectedColor(dot.dataset.color, 'preset');
-      sound.playNav();
-    });
-  });
-
-  // Custom Color Wheel Input
-  if (inputCustomColor) {
-    inputCustomColor.addEventListener('input', e => {
-      setSelectedColor(e.target.value, 'wheel');
-    });
-    inputCustomColor.addEventListener('change', e => {
-      setSelectedColor(e.target.value, 'wheel');
-    });
-  }
-
-  // Hex Code Text Input
-  if (inputCounterHex) {
-    inputCounterHex.addEventListener('input', e => {
-      let raw = e.target.value.replace(/[^0-9a-fA-F]/g, '');
-      if (raw.length > 6) raw = raw.slice(0, 6);
-      e.target.value = raw.toUpperCase();
-
-      if (raw.length === 6 || raw.length === 3) {
-        let fullHex = '#' + raw;
-        if (raw.length === 3) {
-          fullHex = '#' + raw.split('').map(ch => ch + ch).join('');
-        }
-        setSelectedColor(fullHex, 'hex');
-      }
-    });
-  }
 
   // Form counter submit
   formCounter.addEventListener('submit', e => {
@@ -727,7 +830,7 @@ function attachEventListeners() {
         <div class="empty-history-text">
           <p>No past daily logs recorded yet.</p>
           <p style="font-size: 0.8rem; margin-top: 6px; color: var(--text-dim);">
-            When midnight arrives (or if you reset tallies at midnight), daily totals will appear here.
+            When midnight arrives, daily totals will appear here.
           </p>
         </div>
       `;
@@ -781,7 +884,7 @@ function attachEventListeners() {
   if (settingVolumeKeys) {
     settingVolumeKeys.addEventListener('change', e => {
       store.updateSettings({ volumeKeys: e.target.checked });
-      syncStateToAndroid();
+      syncStateToAndroid(!!activeCounterId);
       showToast(e.target.checked ? 'Side Volume Button counting ON' : 'Side Volume Button counting OFF');
     });
   }
@@ -826,14 +929,11 @@ function attachEventListeners() {
 
   // Back navigation handler (Hardware back button & swipe back gesture)
   function handleBackButton() {
-    // 1. Confirm dialog open -> close it
     if (!modalConfirm.classList.contains('hidden')) {
       closeModal(modalConfirm);
       confirmCallback = null;
       return;
     }
-
-    // 2. Modals open -> close them
     if (!modalCounter.classList.contains('hidden')) {
       closeModal(modalCounter);
       return;
@@ -846,14 +946,11 @@ function attachEventListeners() {
       closeModal(modalSettings);
       return;
     }
-
-    // 3. Counter detail page open -> smoothly return to counters list
     if (counterDetailView.classList.contains('active')) {
       closeCounterDetail(true);
       return;
     }
 
-    // 4. Starter / Home page -> Double back verification to exit
     const now = Date.now();
     if (now - lastBackPressTime < 2000) {
       try {
@@ -868,16 +965,12 @@ function attachEventListeners() {
     }
   }
 
-  // Native Android hardware & swipe gesture back button
   try {
     App.addListener('backButton', () => {
       handleBackButton();
     });
-  } catch (e) {
-    // Web fallback
-  }
+  } catch (e) {}
 
-  // Web popstate (browser back button & swipe back)
   window.addEventListener('popstate', () => {
     if (counterDetailView.classList.contains('active')) {
       closeCounterDetail(false);
@@ -893,7 +986,6 @@ function attachEventListeners() {
     }
   });
 
-  // Keyboard accessibility
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       handleBackButton();

@@ -954,108 +954,91 @@ body {
   background: var(--bg-card-hover);
 }
 
-/* Color Picker Container & Wheel & Hex Input */
-.color-picker-container {
+/* Full Hex Color Wheel Component */
+.color-form-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.color-palette-picker {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
+  width: 100%;
 }
 
-.color-dot {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--c);
-  border: 3px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-spring);
+.color-wheel-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+
+.color-wheel-stage {
   position: relative;
-}
-
-.color-dot.active {
-  transform: scale(1.18);
-  border-color: #ffffff;
-  box-shadow: 0 0 12px var(--c);
-}
-
-.color-wheel-btn {
-  width: 36px;
-  height: 36px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  background: conic-gradient(
-    #ff0000,
-    #ff8800,
-    #ffff00,
-    #00ff00,
-    #00ffff,
-    #0000ff,
-    #ff00ff,
-    #ff0000
-  );
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.12);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s;
-  overflow: hidden;
 }
 
-.color-wheel-btn:hover {
-  transform: scale(1.12);
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.45);
+#color-wheel-canvas {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  display: block;
 }
 
-.color-wheel-btn svg {
-  color: #ffffff;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
-  pointer-events: none;
-}
-
-.hidden-color-input {
+.color-wheel-cursor {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.8), inset 0 0 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  left: 100px;
+  top: 100px;
+  transition: transform 0.04s linear;
 }
 
-.hex-input-group {
+.color-control-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 240px;
 }
 
-.hex-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  text-transform: uppercase;
+.hex-preview-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
 }
 
-.hex-field-box {
+.hex-input-box {
   flex: 1;
   display: flex;
   align-items: center;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 2px 12px;
+  padding: 4px 14px;
   transition: border-color 0.2s, background 0.2s;
 }
 
-.hex-field-box:focus-within {
+.hex-input-box:focus-within {
   border-color: var(--accent-emerald);
   background: var(--bg-card-hover);
 }
@@ -1064,32 +1047,22 @@ body {
   font-family: var(--font-title);
   font-weight: 700;
   color: var(--text-muted);
-  font-size: 1rem;
-  margin-right: 4px;
+  font-size: 1.1rem;
+  margin-right: 6px;
 }
 
-.hex-input {
+.hex-text-input {
   flex: 1;
   background: transparent;
   border: none;
   color: var(--text-primary);
   font-family: var(--font-title);
-  font-size: 0.95rem;
-  font-weight: 600;
-  padding: 8px 0;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 6px 0;
   outline: none;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.hex-preview-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-  flex-shrink: 0;
-  transition: background-color 0.2s ease;
+  letter-spacing: 0.08em;
 }
 
 .modal-footer {

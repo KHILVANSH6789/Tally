@@ -204,43 +204,28 @@
               />
             </div>
 
-            <!-- Color Picker Section: Presets + Wheel + Hex -->
-            <div class="form-group">
+            <!-- Color Picker Section: Full Hex Wheel (No suggestions) -->
+            <div class="form-group color-form-group">
               <label>Accent Color</label>
-              <div class="color-picker-container">
-                <div class="color-palette-picker" id="color-picker-group">
-                  <button type="button" class="color-dot active" data-color="#10b981" style="--c: #10b981" aria-label="Emerald"></button>
-                  <button type="button" class="color-dot" data-color="#38bdf8" style="--c: #38bdf8" aria-label="Sky"></button>
-                  <button type="button" class="color-dot" data-color="#818cf8" style="--c: #818cf8" aria-label="Indigo"></button>
-                  <button type="button" class="color-dot" data-color="#c084fc" style="--c: #c084fc" aria-label="Purple"></button>
-                  <button type="button" class="color-dot" data-color="#fb7185" style="--c: #fb7185" aria-label="Rose"></button>
-                  <button type="button" class="color-dot" data-color="#fbbf24" style="--c: #fbbf24" aria-label="Amber"></button>
-
-                  <!-- Custom Color Wheel Button -->
-                  <button type="button" id="btn-color-wheel" class="color-wheel-btn" title="Choose Custom Color" aria-label="Choose Custom Color">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <path d="M12 2a10 10 0 0 1 10 10"></path>
-                    </svg>
-                    <input type="color" id="input-custom-color" class="hidden-color-input" value="#10b981" />
-                  </button>
+              <div class="color-wheel-wrapper">
+                <div class="color-wheel-stage" id="color-wheel-stage">
+                  <canvas id="color-wheel-canvas" width="200" height="200"></canvas>
+                  <div id="color-wheel-cursor" class="color-wheel-cursor"></div>
                 </div>
 
-                <!-- Hex Input with Live Preview Dot -->
-                <div class="hex-input-group">
-                  <span class="hex-label">HEX</span>
-                  <div class="hex-field-box">
+                <div class="color-control-row">
+                  <div class="hex-preview-badge" id="hex-preview-dot" style="background-color: #10b981"></div>
+                  <div class="hex-input-box">
                     <span class="hex-hash">#</span>
                     <input
                       type="text"
                       id="input-counter-hex"
-                      class="form-input hex-input"
-                      placeholder="10b981"
+                      class="hex-text-input"
+                      placeholder="10B981"
                       maxlength="6"
                       autocomplete="off"
                       spellcheck="false"
                     />
-                    <span id="hex-preview-dot" class="hex-preview-dot" style="background-color: #10b981"></span>
                   </div>
                 </div>
               </div>
