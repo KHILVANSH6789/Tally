@@ -571,9 +571,11 @@ function syncStateToAndroid(isSelected = !!activeCounterId) {
       const counter = activeCounterId ? store.getCounterById(activeCounterId) : null;
       const count = counter ? counter.count : 0;
       const step = activeCounterId ? currentStep : 1;
+      const name = counter ? (counter.name || 'Tally') : 'Tally';
+      const target = counter && counter.target ? counter.target : 0;
 
       if (typeof window.AndroidBridge.setActiveCounter === 'function') {
-        window.AndroidBridge.setActiveCounter(activeCounterId || '', count, step, isSelected);
+        window.AndroidBridge.setActiveCounter(activeCounterId || '', name, count, step, target, isSelected);
       }
       if (typeof window.AndroidBridge.setVolumeCountingEnabled === 'function') {
         window.AndroidBridge.setVolumeCountingEnabled(!!store.settings.volumeKeys);
