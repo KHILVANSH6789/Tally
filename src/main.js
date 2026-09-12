@@ -568,14 +568,8 @@ function initColorWheel() {
 function syncStateToAndroid(isSelected = !!activeCounterId) {
   if (window.AndroidBridge) {
     try {
-      const counter = activeCounterId ? store.getCounterById(activeCounterId) : null;
-      const count = counter ? counter.count : 0;
-      const step = activeCounterId ? currentStep : 1;
-      const name = counter ? (counter.name || 'Tally') : 'Tally';
-      const target = counter && counter.target ? counter.target : 0;
-
       if (typeof window.AndroidBridge.setActiveCounter === 'function') {
-        window.AndroidBridge.setActiveCounter(activeCounterId || '', name, count, step, target, isSelected);
+        window.AndroidBridge.setActiveCounter(activeCounterId || '', isSelected);
       }
       if (typeof window.AndroidBridge.setVolumeCountingEnabled === 'function') {
         window.AndroidBridge.setVolumeCountingEnabled(!!store.settings.volumeKeys);

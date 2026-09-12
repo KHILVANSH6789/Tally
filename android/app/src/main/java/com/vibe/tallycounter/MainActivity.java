@@ -1,7 +1,6 @@
 package com.vibe.tallycounter;
 
 import android.content.Context;
-import android.content.Intent;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,13 +18,8 @@ public class MainActivity extends BridgeActivity {
 
     private boolean volumeCountingEnabled = false;
     private boolean isCounterSelected = false;
-    private String activeCounterId = "";
-    private String activeCounterName = "Tally";
-    private int activeCount = 0;
-    private int activeStep = 1;
-    private int activeTarget = 0;
-
     private AudioManager audioManager = null;
+    private long lastVolumeActionTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,20 +57,6 @@ public class MainActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         hideSystemBars();
-
-        // Resync count to web view when screen wakes up
-        VolumeCounterService service = VolumeCounterService.getInstance();
-        if (service != null && isCounterSelected && activeCounterId != null && !activeCounterId.isEmpty()) {
-            activeCount = service.getActiveCount();
-            if (bridge != null && bridge.getWebView() != null) {
-                bridge.getWebView().post(() -> {
-                    bridge.getWebView().evaluateJavascript(
-                        "if (window.syncCountFromNative) { window.syncCountFromNative('" + activeCounterId + "', " + activeCount + ", 'sync'); }",
-                        null
-                    );
-                });
-            }
-        }
     }
 
     private void hideSystemBars() {
@@ -109,12 +89,19 @@ public class MainActivity extends BridgeActivity {
             int keyCode = event.getKeyCode();
             if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    final String direction = (keyCode == KeyEvent.KEYCODE_VOLUME_UP) ? "up" : "down";
-                    VolumeCounterService service = VolumeCounterService.getInstance();
-                    if (service != null) {
-                        service.triggerCount(direction);
-                    } else {
-                        startVolumeService();
+                    long now = System.currentTimeMillis();
+                    if (now - lastVolumeActionTime >= 50) {
+                        lastVolumeActionTime = now;
+                        maximizeVolume();
+                        final String direction = (keyCode == KeyEvent.KEYCODE_VOLUME_UP) ? "up" : "down";
+                        if (bridge != null && bridge.getWebView() != null) {
+                            bridge.getWebView().post(() -> {
+                                bridge.getWebView().evaluateJavascript(
+                                    "if (window.handleVolumeKey) { window.handleVolumeKey('" + direction + "'); }",
+                                    null
+                                );
+                            });
+                        }
                     }
                 }
                 // Return true for BOTH ACTION_DOWN and ACTION_UP to completely suppress system volume beep/change
@@ -122,59 +109,6 @@ public class MainActivity extends BridgeActivity {
             }
         }
         return super.dispatchKeyEvent(event);
-    }
-
-    private synchronized void syncVolumeControlState() {
-        boolean shouldBeActive = volumeCountingEnabled && isCounterSelected;
-
-        if (shouldBeActive) {
-            startVolumeService();
-        } else {
-            stopVolumeService();
-        }
-    }
-
-    private void startVolumeService() {
-        maximizeVolume();
-
-        VolumeCounterService.setListener((counterId, updatedCount, direction) -> {
-            activeCount = updatedCount;
-            runOnUiThread(() -> {
-                if (bridge != null && bridge.getWebView() != null) {
-                    bridge.getWebView().evaluateJavascript(
-                        "if (window.syncCountFromNative) { window.syncCountFromNative('" + counterId + "', " + updatedCount + ", '" + direction + "'); }",
-                        null
-                    );
-                }
-            });
-        });
-
-        Intent intent = new Intent(this, VolumeCounterService.class);
-        intent.setAction(VolumeCounterService.ACTION_START);
-        intent.putExtra(VolumeCounterService.EXTRA_COUNTER_ID, activeCounterId);
-        intent.putExtra(VolumeCounterService.EXTRA_COUNTER_NAME, activeCounterName);
-        intent.putExtra(VolumeCounterService.EXTRA_COUNT, activeCount);
-        intent.putExtra(VolumeCounterService.EXTRA_STEP, activeStep);
-        intent.putExtra(VolumeCounterService.EXTRA_TARGET, activeTarget);
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent);
-            } else {
-                startService(intent);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void stopVolumeService() {
-        VolumeCounterService.setListener(null);
-        Intent intent = new Intent(this, VolumeCounterService.class);
-        intent.setAction(VolumeCounterService.ACTION_STOP);
-        try {
-            stopService(intent);
-        } catch (Exception ignored) {}
     }
 
     private void maximizeVolume() {
@@ -186,35 +120,31 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    @Override
-    public void onDestroy() {
-        isCounterSelected = false;
-        stopVolumeService();
-        super.onDestroy();
-    }
-
     public class VolumeBridge {
         @JavascriptInterface
         public void setVolumeCountingEnabled(boolean enabled) {
             volumeCountingEnabled = enabled;
-            runOnUiThread(() -> syncVolumeControlState());
+            if (enabled && isCounterSelected) {
+                maximizeVolume();
+            }
+        }
+
+        @JavascriptInterface
+        public void setActiveCounter(String id, boolean isSelected) {
+            isCounterSelected = isSelected;
+            if (volumeCountingEnabled && isSelected) {
+                maximizeVolume();
+            }
+        }
+
+        @JavascriptInterface
+        public void setActiveCounter(String id, int count, int step, boolean isSelected) {
+            setActiveCounter(id, isSelected);
         }
 
         @JavascriptInterface
         public void setActiveCounter(String id, String name, int count, int step, int target, boolean isSelected) {
-            activeCounterId = id != null ? id : "";
-            activeCounterName = name != null ? name : "Tally";
-            activeCount = count;
-            activeStep = step > 0 ? step : 1;
-            activeTarget = target;
-            isCounterSelected = isSelected;
-            runOnUiThread(() -> syncVolumeControlState());
-        }
-
-        // Backward compatibility overload
-        @JavascriptInterface
-        public void setActiveCounter(String id, int count, int step, boolean isSelected) {
-            setActiveCounter(id, "Tally", count, step, 0, isSelected);
+            setActiveCounter(id, isSelected);
         }
     }
 }
