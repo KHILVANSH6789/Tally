@@ -19,10 +19,10 @@
 - **Multiple Independent Counters**: Create, customize, and manage as many tallies as you need (habits, workouts, prayers, inventory, books read).
 - **Smooth FLIP Animations**: Cards fluidly expand and collapse into the full-screen touch counter with physics-based transitions.
 - **Cinematic Startup Intro**: Elegant bold intro in *Lobster Two* typography paired with `App_Opening_Intro.mp3` before fading seamlessly into the main dashboard.
-- **Interactive Color Palette & Wheel**: Choose from curated preset colors, tap the rainbow wheel for Android's native color picker, or enter a 6-digit Hex code directly.
+- **Interactive 360° Hex Color Wheel**: Interactive full-spectrum color wheel with touch/drag cursor, live color badge preview, and direct `#RRGGBB` hex code input.
 - **Hardware Volume Buttons Counting**:
-  - Count **Up** or **Down** using the phone's physical side volume buttons.
-  - **Works with the screen off** in your pocket (toggleable in Settings, off by default).
+  - Count **Up** or **Down** using the phone's physical side volume buttons when a tally is open (toggleable in Settings, off by default).
+  - Automatically sets media volume to 100% so clicks are loud and clear without system volume beeps.
 - **Immersive Fullscreen Sticky Mode**: System status bar (notification bar) and bottom navigation bar are completely hidden while using the app.
 - **Midnight Rollover & Daily History**:
   - Automatically saves each day's count at 00:00 midnight and resets to 0 (optional toggle in Settings).
