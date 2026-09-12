@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tally</string>
+    <string name="title_activity_main">Tally</string>
+    <string name="package_name">com.vibe.tallycounter</string>
+    <string name="custom_url_scheme">com.vibe.tallycounter</string>
+</resources>

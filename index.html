@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#090c10" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Tally - Simple Counter</title>
+    <link rel="icon" type="image/png" href="/Tally_Logo.png" />
+    <link rel="apple-touch-icon" href="/Tally_Logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Comic+Relief&family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Ubuntu:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- App Opening Cinematic Intro -->
+    <div id="app-intro" class="app-intro">
+      <div class="intro-content">
+        <h1 class="intro-title">Tally</h1>
+      </div>
+    </div>
+
+    <div id="app">
+      <!-- Top Navigation Bar -->
+      <header class="top-nav">
+        <div class="brand">
+          <div class="brand-badge">
+            <span class="brand-title">Tally</span>
+          </div>
+          <span class="today-date" id="current-date-label">Today</span>
+        </div>
+        <div class="nav-actions">
+          <button id="btn-open-history" class="nav-icon-btn" aria-label="History" title="History">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </button>
+          <button id="btn-open-settings" class="nav-icon-btn" aria-label="Settings" title="Settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Dashboard / Counters Grid View -->
+      <main id="counters-view" class="view-active">
+        <!-- Overview Stats Banner -->
+        <section class="overview-banner">
+          <div class="stat-card">
+            <span class="stat-label">Total Counts</span>
+            <span class="stat-value" id="stat-total-count">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Active Counters</span>
+            <span class="stat-value" id="stat-active-counters">0</span>
+          </div>
+        </section>
+
+        <!-- Counters List Container -->
+        <section class="counters-section">
+          <div class="section-header">
+            <h2 class="section-title">Your Counters</h2>
+            <span class="section-caption" id="midnight-reset-badge">Midnight Reset: ON</span>
+          </div>
+          <div id="counters-grid" class="counters-grid">
+            <!-- Dynamically populated counter cards -->
+          </div>
+          <div id="empty-state" class="empty-state hidden">
+            <div class="empty-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="4"></rect>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+            </div>
+            <h3>No counters yet</h3>
+            <p>Create your first counter to start tracking</p>
+            <button id="btn-empty-add" class="primary-btn">Create Counter</button>
+          </div>
+        </section>
+
+        <!-- Floating Add Button -->
+        <button id="btn-add-counter" class="fab-btn" aria-label="Add new counter">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span class="fab-text">New Counter</span>
+        </button>
+      </main>
+
+      <!-- Smoothly Opened Detail View (Morph Element) -->
+      <section id="counter-detail-view" class="counter-detail-view" aria-hidden="true">
+        <div class="detail-header">
+          <button id="btn-close-detail" class="back-btn" aria-label="Back to counters">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span>Back</span>
+          </button>
+          <div class="detail-meta">
+            <span class="detail-color-pill" id="detail-color-pill"></span>
+            <span class="detail-title-text" id="detail-counter-title">Counter</span>
+          </div>
+          <div class="detail-actions">
+            <button id="btn-edit-current" class="nav-icon-btn" aria-label="Edit Counter" title="Edit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button id="btn-delete-current" class="nav-icon-btn nav-icon-danger" aria-label="Delete Counter" title="Delete">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Tally Touch Interaction Area -->
+        <div class="detail-stage" id="tally-touch-area">
+          <div class="detail-tag-wrapper">
+            <span class="nominal-subtext">TODAY'S COUNT</span>
+            <div id="detail-target-badge" class="target-badge hidden">
+              <span id="detail-target-text">Goal: 100</span>
+            </div>
+          </div>
+
+          <div class="detail-display-container">
+            <div class="detail-num-wrapper">
+              <span id="detail-count-num" class="detail-count-num">0</span>
+            </div>
+            <div id="target-progress-bar-container" class="progress-container hidden">
+              <div id="target-progress-fill" class="progress-fill"></div>
+            </div>
+          </div>
+
+          <div class="tap-hint">
+            <span class="tap-hint-text">Tap anywhere to count</span>
+          </div>
+        </div>
+
+        <!-- Detail Controls Bottom Bar -->
+        <div class="detail-controls">
+          <!-- Step Size Chips -->
+          <div class="step-selector">
+            <span class="step-label">Step:</span>
+            <button class="step-chip active" data-step="1">+1</button>
+            <button class="step-chip" data-step="5">+5</button>
+            <button class="step-chip" data-step="10">+10</button>
+          </div>
+
+          <!-- Secondary Actions -->
+          <div class="detail-actions-row">
+            <button id="btn-decrement" class="action-btn decrement-btn" aria-label="Decrement count">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Decrease</span>
+            </button>
+            <button id="btn-reset-counter" class="action-btn reset-btn" aria-label="Reset counter to zero">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+              </svg>
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Create / Edit Counter Modal -->
+      <div id="modal-counter" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3 id="modal-title">New Counter</h3>
+            <button class="modal-close-btn" data-close-modal="modal-counter" aria-label="Close modal">✕</button>
+          </div>
+          <form id="form-counter" class="modal-body">
+            <input type="hidden" id="input-counter-id" />
+            
+            <div class="form-group">
+              <label for="input-counter-name">Counter Name</label>
+              <input
+                type="text"
+                id="input-counter-name"
+                class="form-input"
+                placeholder="e.g. Glasses of Water, Prayers, Steps"
+                maxlength="30"
+                required
+                autocomplete="off"
+              />
+            </div>
+
+            <!-- Color Picker Section: Presets + Wheel + Hex -->
+            <div class="form-group">
+              <label>Accent Color</label>
+              <div class="color-picker-container">
+                <div class="color-palette-picker" id="color-picker-group">
+                  <button type="button" class="color-dot active" data-color="#10b981" style="--c: #10b981" aria-label="Emerald"></button>
+                  <button type="button" class="color-dot" data-color="#38bdf8" style="--c: #38bdf8" aria-label="Sky"></button>
+                  <button type="button" class="color-dot" data-color="#818cf8" style="--c: #818cf8" aria-label="Indigo"></button>
+                  <button type="button" class="color-dot" data-color="#c084fc" style="--c: #c084fc" aria-label="Purple"></button>
+                  <button type="button" class="color-dot" data-color="#fb7185" style="--c: #fb7185" aria-label="Rose"></button>
+                  <button type="button" class="color-dot" data-color="#fbbf24" style="--c: #fbbf24" aria-label="Amber"></button>
+
+                  <!-- Custom Color Wheel Button -->
+                  <button type="button" id="btn-color-wheel" class="color-wheel-btn" title="Choose Custom Color" aria-label="Choose Custom Color">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M12 2a10 10 0 0 1 10 10"></path>
+                    </svg>
+                    <input type="color" id="input-custom-color" class="hidden-color-input" value="#10b981" />
+                  </button>
+                </div>
+
+                <!-- Hex Input with Live Preview Dot -->
+                <div class="hex-input-group">
+                  <span class="hex-label">HEX</span>
+                  <div class="hex-field-box">
+                    <span class="hex-hash">#</span>
+                    <input
+                      type="text"
+                      id="input-counter-hex"
+                      class="form-input hex-input"
+                      placeholder="10b981"
+                      maxlength="6"
+                      autocomplete="off"
+                      spellcheck="false"
+                    />
+                    <span id="hex-preview-dot" class="hex-preview-dot" style="background-color: #10b981"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="input-counter-initial">Initial Count</label>
+                <input
+                  type="number"
+                  id="input-counter-initial"
+                  class="form-input"
+                  min="0"
+                  value="0"
+                />
+              </div>
+              <div class="form-group half">
+                <label for="input-counter-target">Daily Target (optional)</label>
+                <input
+                  type="number"
+                  id="input-counter-target"
+                  class="form-input"
+                  min="0"
+                  placeholder="None"
+                />
+              </div>
+            </div>
+
+            <div class="modal-footer modal-footer-between">
+              <button type="button" class="danger-btn-subtle hidden" id="btn-delete-counter">Delete Counter</button>
+              <div class="modal-footer-right">
+                <button type="button" class="ghost-btn" data-close-modal="modal-counter">Cancel</button>
+                <button type="submit" class="primary-btn" id="btn-save-counter">Save Counter</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- History Modal -->
+      <div id="modal-history" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-card modal-large">
+          <div class="modal-header">
+            <h3>Daily History</h3>
+            <button class="modal-close-btn" data-close-modal="modal-history" aria-label="Close modal">✕</button>
+          </div>
+          <div class="modal-body history-body" id="history-content">
+            <!-- Dynamically injected history entries -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="ghost-btn" data-close-modal="modal-history">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="modal-settings" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>Settings</h3>
+            <button class="modal-close-btn" data-close-modal="modal-settings" aria-label="Close modal">✕</button>
+          </div>
+          <div class="modal-body settings-list">
+            <!-- Setting 1: Midnight Reset -->
+            <div class="setting-item">
+              <div class="setting-text">
+                <span class="setting-title">Reset Tallies at Midnight</span>
+                <span class="setting-desc">Automatically save today's count into history and reset to 0 at 00:00</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-midnight-reset" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Setting 2: Haptics -->
+            <div class="setting-item">
+              <div class="setting-text">
+                <span class="setting-title">Vibration & Haptics</span>
+                <span class="setting-desc">Tactile response on count taps</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-haptics" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Setting 3: Audio Click -->
+            <div class="setting-item">
+              <div class="setting-text">
+                <span class="setting-title">Click Sound</span>
+                <span class="setting-desc">Gentle mechanical click when counting</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-audio" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Setting 4: Hardware Volume Buttons -->
+            <div class="setting-item">
+              <div class="setting-text">
+                <span class="setting-title">Hardware Volume Buttons</span>
+                <span class="setting-desc">Use phone side volume buttons to count up & down (works with screen off)</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-volume-keys" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="settings-danger-zone">
+              <button type="button" id="btn-clear-all" class="danger-outline-btn">
+                Reset All Counters to Zero
+              </button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="primary-btn" data-close-modal="modal-settings">Done</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirmation Dialog -->
+      <div id="modal-confirm" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-card modal-compact">
+          <div class="modal-header">
+            <h3 id="confirm-title">Confirm Action</h3>
+          </div>
+          <p id="confirm-message" class="confirm-text">Are you sure you want to proceed?</p>
+          <div class="modal-footer">
+            <button type="button" class="ghost-btn" id="btn-confirm-cancel">Cancel</button>
+            <button type="button" class="danger-btn" id="btn-confirm-ok">Confirm</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div id="toast" class="toast hidden" role="status"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
