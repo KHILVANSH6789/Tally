@@ -84,10 +84,11 @@ const btnEditCurrent = document.getElementById('btn-edit-current');
 const btnDeleteCurrent = document.getElementById('btn-delete-current');
 const stepChips = document.querySelectorAll('.step-chip');
 
-// Quick Touch Lock Toggle Button & Icons
-const btnToggleTouchLock = document.getElementById('btn-toggle-touch-lock');
+// Corner Touch Increment Toggle Button & Status
+const btnCornerTouchToggle = document.getElementById('btn-corner-touch-toggle');
 const iconTouchUnlocked = document.getElementById('icon-touch-unlocked');
 const iconTouchLocked = document.getElementById('icon-touch-locked');
+const labelTouchStatus = document.getElementById('label-touch-status');
 const detailTapHintText = document.getElementById('detail-tap-hint-text');
 
 // Timer Widget Elements
@@ -109,7 +110,6 @@ const inputCounterName = document.getElementById('input-counter-name');
 const inputCounterInitial = document.getElementById('input-counter-initial');
 const inputCounterTarget = document.getElementById('input-counter-target');
 const inputCounterTimer = document.getElementById('input-counter-timer');
-const inputCounterTouch = document.getElementById('input-counter-touch');
 const timerChips = document.querySelectorAll('.timer-chip');
 const btnDeleteCounter = document.getElementById('btn-delete-counter');
 
@@ -357,9 +357,23 @@ function updateTouchLockUI(counter) {
   if (tallyTouchArea) {
     tallyTouchArea.classList.toggle('touch-locked', isLocked);
   }
+  if (btnCornerTouchToggle) {
+    btnCornerTouchToggle.classList.toggle('locked', isLocked);
+    btnCornerTouchToggle.setAttribute(
+      'aria-label',
+      isLocked ? 'Touch Increment: Locked (Tap to Enable)' : 'Touch Increment: Enabled (Tap to Lock)'
+    );
+    btnCornerTouchToggle.setAttribute(
+      'title',
+      isLocked ? 'Touch counting is locked. Tap to enable.' : 'Touch counting is active. Tap to lock.'
+    );
+  }
   if (iconTouchUnlocked && iconTouchLocked) {
     iconTouchUnlocked.classList.toggle('hidden', isLocked);
     iconTouchLocked.classList.toggle('hidden', !isLocked);
+  }
+  if (labelTouchStatus) {
+    labelTouchStatus.textContent = isLocked ? 'Touch: OFF' : 'Touch: ON';
   }
   if (detailTapHintText) {
     detailTapHintText.textContent = isLocked
@@ -939,9 +953,9 @@ function attachEventListeners() {
   // Close Detail View
   btnCloseDetail.addEventListener('click', () => closeCounterDetail(true));
 
-  // Quick Touch Lock Toggle in Detail Header
-  if (btnToggleTouchLock) {
-    btnToggleTouchLock.addEventListener('click', e => {
+  // Corner Touch Increment Toggle inside counter stage
+  if (btnCornerTouchToggle) {
+    btnCornerTouchToggle.addEventListener('click', e => {
       e.stopPropagation();
       if (!activeCounterId) return;
       const counter = store.getCounterById(activeCounterId);
@@ -1043,9 +1057,6 @@ function attachEventListeners() {
       inputCounterTimer.value = counter.timerSeconds || 0;
       updateActiveTimerChip(counter.timerSeconds || 0);
     }
-    if (inputCounterTouch) {
-      inputCounterTouch.checked = counter.touchIncrement !== false;
-    }
     drawColorWheel();
     setColorWheelFromHex(counter.color || '#10b981');
     btnDeleteCounter.classList.remove('hidden');
@@ -1137,9 +1148,6 @@ function attachEventListeners() {
       inputCounterTimer.value = '0';
       updateActiveTimerChip(0);
     }
-    if (inputCounterTouch) {
-      inputCounterTouch.checked = true;
-    }
     drawColorWheel();
     setColorWheelFromHex('#10b981');
     btnDeleteCounter.classList.add('hidden');
@@ -1155,9 +1163,6 @@ function attachEventListeners() {
       inputCounterTimer.value = '0';
       updateActiveTimerChip(0);
     }
-    if (inputCounterTouch) {
-      inputCounterTouch.checked = true;
-    }
     drawColorWheel();
     setColorWheelFromHex('#10b981');
     btnDeleteCounter.classList.add('hidden');
@@ -1172,7 +1177,6 @@ function attachEventListeners() {
     const initial = parseInt(inputCounterInitial.value, 10) || 0;
     const target = inputCounterTarget.value ? parseInt(inputCounterTarget.value, 10) : null;
     const timerSeconds = inputCounterTimer ? parseInt(inputCounterTimer.value, 10) || 0 : 0;
-    const touchIncrement = inputCounterTouch ? inputCounterTouch.checked : true;
 
     if (!name) return;
 
@@ -1183,7 +1187,6 @@ function attachEventListeners() {
         target,
         color: selectedColor,
         timerSeconds,
-        touchIncrement,
       });
       showToast('Counter updated');
     } else {
@@ -1193,7 +1196,7 @@ function attachEventListeners() {
         initialCount: initial,
         target,
         timerSeconds,
-        touchIncrement,
+        touchIncrement: true,
       });
       showToast('Counter created');
     }

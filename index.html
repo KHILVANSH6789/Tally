@@ -119,17 +119,6 @@
             <h2 id="detail-counter-title" class="detail-counter-title">Counter Name</h2>
           </div>
           <div class="detail-actions">
-            <!-- Quick Touch Lock Toggle Button -->
-            <button id="btn-toggle-touch-lock" class="nav-icon-btn" aria-label="Toggle Touch Lock" title="Toggle Touch Lock">
-              <svg id="icon-touch-unlocked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-              </svg>
-              <svg id="icon-touch-locked" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
-            </button>
             <button id="btn-edit-current" class="nav-icon-btn" aria-label="Edit Counter" title="Edit">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -147,6 +136,25 @@
 
         <!-- Main Tally Touch Interaction Area -->
         <div class="detail-stage" id="tally-touch-area">
+          <!-- Touch Increment Corner Toggle Button -->
+          <button
+            type="button"
+            id="btn-corner-touch-toggle"
+            class="corner-touch-toggle"
+            aria-label="Toggle Touch Increment"
+            title="Toggle Touch Increment"
+          >
+            <svg id="icon-touch-unlocked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+            </svg>
+            <svg id="icon-touch-locked" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span id="label-touch-status" class="corner-touch-label">Touch: ON</span>
+          </button>
+
           <div class="detail-tag-wrapper">
             <span class="nominal-subtext">TODAY'S COUNT</span>
             <div id="detail-target-badge" class="target-badge hidden">
@@ -317,18 +325,6 @@
                 </div>
               </div>
               <span class="form-hint">Resets automatically each time tally counts up. Plays Time_Up sound when time expires.</span>
-            </div>
-
-            <!-- Touch Increment Toggle Option -->
-            <div class="form-group toggle-form-row">
-              <div class="toggle-form-text">
-                <span class="toggle-form-title">Touch Increment</span>
-                <span class="toggle-form-desc">Tap big screen area to count (turn off to prevent accidental touches)</span>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="input-counter-touch" checked />
-                <span class="toggle-slider"></span>
-              </label>
             </div>
 
             <div class="modal-footer modal-footer-between">
