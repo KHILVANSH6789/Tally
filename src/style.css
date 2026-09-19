@@ -990,24 +990,45 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 360px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-group.half {
-  flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .form-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);

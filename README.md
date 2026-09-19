@@ -1,53 +1,110 @@
 <p align="center">
-  <img src="./Tally_Logo.png" width="128" height="128" alt="Tally Counter Logo" style="border-radius: 28px;" />
+  <img src="./Tally_Logo.png" width="120" height="120" alt="Tally Logo" style="border-radius: 26px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);" />
 </p>
 
 <h1 align="center">Tally</h1>
 
 <p align="center">
-  <b>A sleek, ergonomic, and eye-pleasant tally counter app for Android & Web.</b>
+  <b>A clean, ergonomic, and distraction-free tally counter for Android & Web.</b>
 </p>
 
 <p align="center">
-  <a href="./apk/Tally.apk"><b>⬇️ Download APK (Direct Install)</b></a>
+  <a href="https://github.com/KHILVANSH6789/Tally/releases/latest"><img src="https://img.shields.io/badge/Release-v1.0.5-10b981?style=flat-square" alt="Version"></a>
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Web-38bdf8?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/Capacitor-v7.1-violet?style=flat-square" alt="Capacitor">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License">
+</p>
+
+<p align="center">
+  <a href="./apk/Tally.apk"><b>⬇️ Download Latest APK (Tally.apk)</b></a> •
+  <a href="https://github.com/KHILVANSH6789/Tally/releases"><b>Releases & Changelog</b></a>
 </p>
 
 ---
 
-## 📱 Features
+## 🧭 Application Workflow
 
-- **Multiple Independent Counters**: Create, customize, and manage as many tallies as you need (habits, workouts, prayers, inventory, books read).
-- **Smooth FLIP Animations**: Cards fluidly expand and collapse into the full-screen touch counter with physics-based transitions.
-- **Cinematic Startup Intro**: Elegant bold intro in *Lobster Two* typography paired with `App_Opening_Intro.mp3` before fading seamlessly into the main dashboard.
-- **Interactive 360° Hex Color Wheel**: Interactive full-spectrum color wheel with touch/drag cursor, live color badge preview, and direct `#RRGGBB` hex code input.
-- **Hardware Volume Buttons Counting**:
-  - Count **Up** or **Down** using the phone's physical side volume buttons when a tally is open (toggleable in Settings, off by default).
-  - Automatically sets media volume to 100% so clicks are loud and clear without system volume beeps.
-- **Immersive Fullscreen Sticky Mode**: System status bar (notification bar) and bottom navigation bar are completely hidden while using the app.
-- **Midnight Rollover & Daily History**:
-  - Automatically saves each day's count at 00:00 midnight and resets to 0 (optional toggle in Settings).
-  - Browse past days' totals in the Daily History viewer.
-- **Rich Audio Package**:
-  - `Tap_Normal.mp3`: Rapid mechanical click for counting up.
-  - `Tap_Decrease.mp3`: Distinct mechanical click for counting down.
-  - `Goal_Reached.mp3`: Celebratory chime when hitting daily target.
-  - `App_Opening_Intro.mp3`: Startup splash sound.
-- **Haptic Tactile Feedback**: Fine-tuned vibrational pulses on every tap.
-- **Hardware Back Button Protection**: Double-back press verification prevents accidental app closure.
+```mermaid
+graph TD
+    A[Home Dashboard] -->|Tap Card| B[Counter Detail View]
+    A -->|Top Nav| H[Daily History Modal]
+    A -->|Top Nav| S[Settings & In-App Updater]
+    
+    B -->|Tap Area / Vol Up| C[Count Up ++]
+    B -->|Vol Down / Button| D[Count Down --]
+    B -->|Corner Lock Toggle| L[Lock/Unlock Touch Input]
+    
+    C -->|If Timer Configured| T[Start/Reset Countdown Timer]
+    C -->|Crosses Segment| M[Milestone Chime & Notch Reached]
+    
+    H -->|Search Query| F[Filter by Day, Date, Month, Name]
+    H -->|Sort Select| O[Sort: Newest, Oldest, Count, Name]
+```
 
 ---
 
-## 🚀 Quick Start (Web Development)
+## ✨ Core Features
+
+### ⏱️ Smart Countdown Timers
+- Attach an optional countdown timer (15s, 30s, 60s, or custom seconds) to any counter.
+- **Lazy Start**: When opening a tally, the timer stays in a ready state until your **first tap or volume count**.
+- **Auto-Reset**: Each subsequent count up automatically resets the timer back to full duration. Plays `Time_Up.mp3` when the clock runs out.
+- **Home Badges**: Counters configured with a timer display an inline timer pill directly on the home card.
+
+### 🎯 Subdivided Milestone Targets
+- Intelligent milestone division tailored to your chosen goal:
+  - **Goal 10**: Midpoint milestone at **5** (50%) & goal at **10** (100%).
+  - **Goal 100**: Intermediate milestones at **25**, **50**, **75**, and **100**.
+  - **Goal 30**: Segmented at **10**, **20**, and **30**.
+- Dynamic progress notches render across the progress bar corresponding to each segment.
+- Plays gentle split sound (`Goal_Split.mp3`) at intermediate notches and celebratory chime (`Goal_Reached.mp3`) at 100%.
+
+### 🔒 Touch Lock Mode
+- Corner toggle inside every counter detail screen lets you lock screen touches to prevent accidental double-counts while walking or exercising.
+- Physical volume buttons continue counting smoothly while touch is locked.
+
+### 🔍 Daily History with Search & Multi-Sort
+- View past counts automatically archived each night at midnight (optional toggle).
+- **Live Search**: Search entries by weekday (*"Monday"*), month (*"September"*), date numbers, or counter name.
+- **Sort Options**: Order logs by *Newest First*, *Oldest First*, *Highest Count*, *Lowest Count*, or *Alphabetical (A-Z)*.
+
+### 🚀 Built-In GitHub Updater
+- Check for updates and download new releases straight from the GitHub repository within the app.
+- Native background downloader with progress indicator and package installer trigger.
+
+### 🎨 360° Interactive Hex Color Wheel
+- Customize each counter with an interactive color wheel canvas and live hex input box (`#RRGGBB`).
+- Clean visual distinction for habits, fitness reps, prayers, or study sessions.
+
+### 🔊 Audio & Volume Keys Control
+- Optional hardware volume button counting (Volume Up = count up, Volume Down = count down).
+- Uses device media volume rather than forced levels.
+- Rapid sound effect pooling (`Tap_Normal.mp3`, `Tap_Decrease.mp3`, `Goal_Reached.mp3`, `Goal_Split.mp3`, `Time_Up.mp3`).
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|:---|:---|
+| **Frontend** | Vanilla JavaScript (ES Modules), HTML5, CSS3 Variables |
+| **Mobile Runtime** | [Capacitor 7](https://capacitorjs.com/) with native Android bridge |
+| **Styling** | Custom responsive dark theme, CSS Grid & Flexbox |
+| **Platform Target** | Android SDK 34+ (Java 17 OpenJDK) & Modern Browsers |
+
+---
+
+## 💻 Local Development
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-username/Tallycounter.git
-cd Tallycounter
+# Clone the repository
+git clone https://github.com/KHILVANSH6789/Tally.git
+cd Tally
 
-# 2. Install dependencies
+# Install dependencies
 npm install
 
-# 3. Start local development server
+# Run Vite dev server
 npm run dev
 ```
 
@@ -56,55 +113,22 @@ npm run dev
 ## 📦 Building the Android APK
 
 ```bash
-# 1. Build web distribution
+# 1. Compile web bundle
 npm run build
 
-# 2. Sync web assets with Capacitor Android
+# 2. Sync web assets with Capacitor
 npx cap sync android
 
-# 3. Compile the debug APK
+# 3. Assemble Android Debug APK
 cd android
 ./gradlew assembleDebug
 
-# Built APK will be located at:
+# Output APK:
 # android/app/build/outputs/apk/debug/app-debug.apk
-# or ready in ./apk/Tally.apk
 ```
 
 ---
 
-## 📂 Project Structure
+## 📄 License
 
-```
-Tallycounter/
-├── apk/                      # Ready-to-install prebuilt APK
-│   └── Tally.apk
-├── android/                  # Native Android Capacitor Project (Java 17)
-│   ├── app/
-│   │   ├── src/main/java/com/vibe/tallycounter/MainActivity.java
-│   │   └── src/main/res/     # Adaptive launcher icons, themes & drawables
-├── public/                   # Static assets & sound package
-│   ├── sounds/               # MP3 sound effects
-│   │   ├── App_Opening_Intro.mp3
-│   │   ├── Goal_Reached.mp3
-│   │   ├── Tap_Normal.mp3
-│   │   └── Tap_Decrease.mp3
-│   └── Tally_Logo.png
-├── src/                      # Web App Source Code
-│   ├── audio.js              # Rapid-fire sound pooling engine
-│   ├── storage.js            # LocalStorage & midnight archive engine
-│   ├── main.js               # UI logic, FLIP transitions & native bridge
-│   └── style.css             # Dark theme design system & animations
-├── capacitor.config.json     # Capacitor configuration
-├── index.html                # App layout & modals
-└── package.json
-```
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend**: Vanilla JavaScript (ES Modules), HTML5, CSS3 Custom Properties
-- **Typography**: Google Fonts (*Lobster Two*, *Ubuntu*, *Comic Relief*)
-- **Mobile Engine**: [Capacitor 7](https://capacitorjs.com/)
-- **Native Android**: Android SDK 34 / Java 17 Microsoft OpenJDK
+Open-source under the [MIT License](LICENSE). Contributions, bug reports, and suggestions are always welcome!

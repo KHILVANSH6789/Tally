@@ -4,7 +4,7 @@ import { sound } from './audio.js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { App } from '@capacitor/app';
 
-const APP_VERSION = 'v1.0.4';
+const APP_VERSION = 'v1.0.5';
 
 async function triggerHaptic(type = 'light') {
   if (!store.settings.haptics) return;
