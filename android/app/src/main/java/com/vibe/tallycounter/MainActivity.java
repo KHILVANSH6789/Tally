@@ -1,24 +1,34 @@
 package com.vibe.tallycounter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends BridgeActivity {
 
     private boolean volumeCountingEnabled = false;
     private boolean isCounterSelected = false;
-    private AudioManager audioManager = null;
     private long lastVolumeActionTime = 0;
 
     @Override
@@ -32,8 +42,6 @@ public class MainActivity extends BridgeActivity {
         }
 
         hideSystemBars();
-
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         // Configure seamless native WebView and register JavaScript bridge
         if (bridge != null && bridge.getWebView() != null) {
@@ -83,6 +91,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     // Intercept physical volume buttons when screen is ON - ONLY when a counter is selected
+    // Otherwise let the user adjust media volume the regular way in the menu/selection screen
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (volumeCountingEnabled && isCounterSelected) {
@@ -92,31 +101,22 @@ public class MainActivity extends BridgeActivity {
                     long now = System.currentTimeMillis();
                     if (now - lastVolumeActionTime >= 50) {
                         lastVolumeActionTime = now;
-                        maximizeVolume();
                         final String direction = (keyCode == KeyEvent.KEYCODE_VOLUME_UP) ? "up" : "down";
-                        if (bridge != null && bridge.getWebView() != null) {
-                            bridge.getWebView().post(() -> {
-                                bridge.getWebView().evaluateJavascript(
-                                    "if (window.handleVolumeKey) { window.handleVolumeKey('" + direction + "'); }",
-                                    null
-                                );
-                            });
-                        }
+                        postToWebview("if (window.handleVolumeKey) { window.handleVolumeKey('" + direction + "'); }");
                     }
                 }
-                // Return true for BOTH ACTION_DOWN and ACTION_UP to completely suppress system volume beep/change
+                // Suppress phone volume change popup when counting
                 return true;
             }
         }
         return super.dispatchKeyEvent(event);
     }
 
-    private void maximizeVolume() {
-        if (audioManager != null) {
-            try {
-                int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, max, 0);
-            } catch (Exception ignored) {}
+    private void postToWebview(final String jsCode) {
+        if (bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().post(() -> {
+                bridge.getWebView().evaluateJavascript(jsCode, null);
+            });
         }
     }
 
@@ -124,17 +124,11 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void setVolumeCountingEnabled(boolean enabled) {
             volumeCountingEnabled = enabled;
-            if (enabled && isCounterSelected) {
-                maximizeVolume();
-            }
         }
 
         @JavascriptInterface
         public void setActiveCounter(String id, boolean isSelected) {
             isCounterSelected = isSelected;
-            if (volumeCountingEnabled && isSelected) {
-                maximizeVolume();
-            }
         }
 
         @JavascriptInterface
@@ -145,6 +139,68 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void setActiveCounter(String id, String name, int count, int step, int target, boolean isSelected) {
             setActiveCounter(id, isSelected);
+        }
+
+        @JavascriptInterface
+        public void downloadAndInstallUpdate(final String downloadUrl) {
+            new Thread(() -> {
+                try {
+                    URL url = new URL(downloadUrl);
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(15000);
+                    connection.setReadTimeout(30000);
+                    connection.connect();
+
+                    int fileLength = connection.getContentLength();
+                    File cacheDir = getCacheDir();
+                    File apkFile = new File(cacheDir, "Tally_update.apk");
+                    if (apkFile.exists()) {
+                        apkFile.delete();
+                    }
+
+                    InputStream input = new BufferedInputStream(connection.getInputStream());
+                    OutputStream output = new FileOutputStream(apkFile);
+
+                    byte[] data = new byte[8192];
+                    long total = 0;
+                    int count;
+                    int lastPercent = 0;
+
+                    while ((count = input.read(data)) != -1) {
+                        total += count;
+                        output.write(data, 0, count);
+                        if (fileLength > 0) {
+                            int percent = (int) (total * 100 / fileLength);
+                            if (percent != lastPercent) {
+                                lastPercent = percent;
+                                postToWebview("if (window.onUpdateDownloadProgress) { window.onUpdateDownloadProgress(" + percent + "); }");
+                            }
+                        }
+                    }
+                    output.flush();
+                    output.close();
+                    input.close();
+
+                    postToWebview("if (window.onUpdateDownloadProgress) { window.onUpdateDownloadProgress(100); }");
+
+                    // Prompt native PackageInstaller
+                    Uri apkUri = FileProvider.getUriForFile(
+                        MainActivity.this,
+                        getPackageName() + ".fileprovider",
+                        apkFile
+                    );
+
+                    Intent installIntent = new Intent(Intent.ACTION_VIEW);
+                    installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                    installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(installIntent);
+
+                } catch (Exception e) {
+                    Log.e("TallyUpdate", "Error downloading update", e);
+                    postToWebview("if (window.onUpdateDownloadError) { window.onUpdateDownloadError('" + e.getMessage().replace("'", "\\'") + "'); }");
+                }
+            }).start();
         }
     }
 }

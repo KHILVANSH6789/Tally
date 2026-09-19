@@ -191,7 +191,7 @@ class DataStore {
     return this.counters.find(c => c.id === id) || null;
   }
 
-  addCounter({ name, color, target, initialCount = 0 }) {
+  addCounter({ name, color, target, initialCount = 0, touchIncrement = true, timerSeconds = 0 }) {
     const newCounter = {
       id: 'counter_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       name: name.trim(),
@@ -199,6 +199,8 @@ class DataStore {
       target: target ? Math.max(1, parseInt(target, 10)) : null,
       step: 1,
       color: color || '#10b981',
+      touchIncrement: touchIncrement !== false,
+      timerSeconds: Math.max(0, parseInt(timerSeconds, 10) || 0),
       createdAt: Date.now(),
       history: {},
     };
@@ -224,7 +226,30 @@ class DataStore {
     const prevCount = counter.count;
     counter.count = Math.max(0, counter.count + step);
     this.saveCounters();
-    return { counter, reachedTarget: counter.target && prevCount < counter.target && counter.count >= counter.target };
+
+    let milestone = null;
+    if (counter.target && counter.target > 0) {
+      const q1 = Math.max(1, Math.ceil(0.25 * counter.target));
+      const q2 = Math.max(q1 + 1, Math.ceil(0.50 * counter.target));
+      const q3 = Math.max(q2 + 1, Math.ceil(0.75 * counter.target));
+      const q4 = counter.target;
+
+      if (prevCount < q4 && counter.count >= q4) {
+        milestone = { quarter: 4, text: "Daily Goal Reached! 🎉", isFinal: true };
+      } else if (q3 < q4 && prevCount < q3 && counter.count >= q3) {
+        milestone = { quarter: 3, text: "3/4 of the way there! ⚡", isFinal: false };
+      } else if (q2 < q3 && prevCount < q2 && counter.count >= q2) {
+        milestone = { quarter: 2, text: "Halfway there! 2/4 completed! 🚀", isFinal: false };
+      } else if (q1 < q2 && prevCount < q1 && counter.count >= q1) {
+        milestone = { quarter: 1, text: "1/4th of the way there! 🌟", isFinal: false };
+      }
+    }
+
+    return {
+      counter,
+      reachedTarget: !!(milestone && milestone.isFinal),
+      milestone,
+    };
   }
 
   decrementCounter(id, amount = null) {

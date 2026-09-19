@@ -169,6 +169,9 @@ body {
   text-shadow: 0 0 45px rgba(16, 185, 129, 0.55), 0 0 85px rgba(16, 185, 129, 0.3);
   opacity: 0;
   transform: scale(0.9);
+}
+
+.intro-ready .intro-title {
   animation: introTextSequence 2.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -1318,6 +1321,336 @@ input:checked + .toggle-slider:before {
   transition: opacity 0.2s, transform 0.2s;
 }
 
+/* ================= Countdown Timer Widget in Detail View ================= */
+.timer-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  margin: 10px auto 4px;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s, background-color 0.25s;
+}
+
+.timer-widget.timer-expired {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  animation: pulseExpired 1s infinite alternate;
+}
+
+@keyframes pulseExpired {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(244, 63, 94, 0.3); }
+  100% { transform: scale(1.04); box-shadow: 0 0 20px rgba(244, 63, 94, 0.6); }
+}
+
+.timer-display-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.timer-mini-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timer-mini-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.timer-mini-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ================= Touch Lock State ================= */
+.detail-stage.touch-locked {
+  cursor: default;
+}
+
+.detail-stage.touch-locked .detail-count-num {
+  opacity: 0.92;
+}
+
+.touch-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.touch-lock-shake {
+  animation: lockShake 0.35s ease;
+}
+
+@keyframes lockShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+/* ================= Progress Bar Notches & Milestone Popup ================= */
+.progress-container {
+  position: relative;
+}
+
+.progress-notches {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.progress-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateX(-50%);
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.progress-notch.notch-25 { left: 25%; }
+.progress-notch.notch-50 { left: 50%; }
+.progress-notch.notch-75 { left: 75%; }
+
+.progress-notch.reached {
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+/* Milestone Celebration Pill (Smooth & Lightweight) */
+.milestone-popup {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translate3d(-50%, 0, 0);
+  background: rgba(20, 27, 36, 0.95);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  font-family: var(--font-title);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(16, 185, 129, 0.35);
+  backdrop-filter: blur(12px);
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.milestone-popup.show {
+  opacity: 1;
+  transform: translate3d(-50%, -10px, 0) scale(1.03);
+}
+
+/* ================= Modal Timer & Touch Form Groups ================= */
+.timer-config-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timer-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.timer-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.timer-chip:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.timer-chip.active {
+  background: var(--accent-emerald);
+  color: #052317;
+  border-color: var(--accent-emerald);
+}
+
+.toggle-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.toggle-form-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-form-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.toggle-form-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.form-hint {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ================= History Date Groups & Separators ================= */
+.history-date-group {
+  margin-bottom: 20px;
+}
+
+.history-date-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.date-sep-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-emerald);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.date-sep-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-subtle), transparent);
+}
+
+/* ================= Update Modal & Progress ================= */
+.update-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.update-version-tag {
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--accent-emerald);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.update-release-date {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.update-notes-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.update-notes-box ul {
+  padding-left: 18px;
+  margin-top: 6px;
+}
+
+.update-progress-container {
+  margin-top: 10px;
+}
+
+.update-progress-text {
+  display: block;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-emerald);
+  margin-top: 6px;
+}
+
+.secondary-btn-compact {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.secondary-btn-compact:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--border-focus);
+}
+
 .hidden {
   display: none !important;
 }
+

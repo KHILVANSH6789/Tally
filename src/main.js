@@ -4,6 +4,8 @@ import { sound } from './audio.js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { App } from '@capacitor/app';
 
+const APP_VERSION = 'v1.0.2';
+
 async function triggerHaptic(type = 'light') {
   if (!store.settings.haptics) return;
 
@@ -42,6 +44,18 @@ let lastBackPressTime = 0;
 let isWheelPointerDown = false;
 let colorWheelDrawn = false;
 
+// Detail Timer State
+let timerIntervalId = null;
+let timerRemainingSeconds = 0;
+let timerTotalSeconds = 0;
+let isTimerPaused = false;
+
+// Milestone celebration state
+let milestoneTimeoutId = null;
+
+// GitHub Updater State
+let latestReleaseApkUrl = null;
+
 // Intro Splash Elements
 const appIntro = document.getElementById('app-intro');
 
@@ -70,6 +84,22 @@ const btnEditCurrent = document.getElementById('btn-edit-current');
 const btnDeleteCurrent = document.getElementById('btn-delete-current');
 const stepChips = document.querySelectorAll('.step-chip');
 
+// Quick Touch Lock Toggle Button & Icons
+const btnToggleTouchLock = document.getElementById('btn-toggle-touch-lock');
+const iconTouchUnlocked = document.getElementById('icon-touch-unlocked');
+const iconTouchLocked = document.getElementById('icon-touch-locked');
+const detailTapHintText = document.getElementById('detail-tap-hint-text');
+
+// Timer Widget Elements
+const detailTimerWidget = document.getElementById('detail-timer-widget');
+const detailTimerText = document.getElementById('detail-timer-text');
+const btnTimerToggle = document.getElementById('btn-timer-toggle');
+const btnTimerReset = document.getElementById('btn-timer-reset');
+
+// Milestone Celebration Elements
+const milestonePopup = document.getElementById('milestone-popup');
+const milestonePopupText = document.getElementById('milestone-popup-text');
+
 // Modals
 const modalCounter = document.getElementById('modal-counter');
 const modalTitle = document.getElementById('modal-title');
@@ -78,6 +108,9 @@ const inputCounterId = document.getElementById('input-counter-id');
 const inputCounterName = document.getElementById('input-counter-name');
 const inputCounterInitial = document.getElementById('input-counter-initial');
 const inputCounterTarget = document.getElementById('input-counter-target');
+const inputCounterTimer = document.getElementById('input-counter-timer');
+const inputCounterTouch = document.getElementById('input-counter-touch');
+const timerChips = document.querySelectorAll('.timer-chip');
 const btnDeleteCounter = document.getElementById('btn-delete-counter');
 
 // Interactive Color Wheel Elements
@@ -95,7 +128,18 @@ const settingMidnightReset = document.getElementById('setting-midnight-reset');
 const settingHaptics = document.getElementById('setting-haptics');
 const settingAudio = document.getElementById('setting-audio');
 const settingVolumeKeys = document.getElementById('setting-volume-keys');
+const btnCheckUpdates = document.getElementById('btn-check-updates');
 const btnClearAll = document.getElementById('btn-clear-all');
+
+// Update Modal Elements
+const modalUpdate = document.getElementById('modal-update');
+const updateVersionTag = document.getElementById('update-version-tag');
+const updateReleaseDate = document.getElementById('update-release-date');
+const updateNotesBox = document.getElementById('update-notes-box');
+const updateProgressContainer = document.getElementById('update-progress-container');
+const updateProgressFill = document.getElementById('update-progress-fill');
+const updateProgressText = document.getElementById('update-progress-text');
+const btnDoUpdate = document.getElementById('btn-do-update');
 
 const modalConfirm = document.getElementById('modal-confirm');
 const confirmTitle = document.getElementById('confirm-title');
@@ -119,7 +163,7 @@ function init() {
   updateMidnightBadge();
   syncStateToAndroid(false);
 
-  // Play cinematic intro sequence
+  // Play cinematic intro sequence (awaits local font readiness)
   runAppIntroSequence();
 
   // Listen to store updates
@@ -132,29 +176,43 @@ function init() {
 
   attachEventListeners();
   initColorWheel();
+
+  // Check for updates silently in background
+  setTimeout(() => {
+    checkForAppUpdate(false);
+  }, 3500);
 }
 
-// Cinematic Intro Splash Sequence
+// Cinematic Intro Splash Sequence (Eliminates font swap glitch)
 function runAppIntroSequence() {
   if (!appIntro) return;
 
-  // Play intro audio
-  sound.playIntro();
+  const startAnimation = () => {
+    appIntro.classList.add('intro-ready');
+    sound.playIntro();
 
-  // Fade out intro after Lobster Two text animation finishes
-  const timer = setTimeout(() => {
-    finishIntro();
-  }, 2100);
-
-  // Allow clicking to dismiss intro early if desired
-  appIntro.addEventListener(
-    'click',
-    () => {
-      clearTimeout(timer);
+    const timer = setTimeout(() => {
       finishIntro();
-    },
-    { once: true }
-  );
+    }, 2100);
+
+    appIntro.addEventListener(
+      'click',
+      () => {
+        clearTimeout(timer);
+        finishIntro();
+      },
+      { once: true }
+    );
+  };
+
+  if (document.fonts && document.fonts.ready) {
+    Promise.race([
+      document.fonts.ready,
+      new Promise(resolve => setTimeout(resolve, 250)),
+    ]).then(startAnimation);
+  } else {
+    startAnimation();
+  }
 
   function finishIntro() {
     appIntro.classList.add('intro-fade-out');
@@ -183,7 +241,7 @@ function updateMidnightBadge() {
   }
 }
 
-// Render Counters Grid (Home selection menu - without increment button)
+// Render Counters Grid (Home selection menu - clean card display)
 function renderCounters() {
   const counters = store.getCounters();
 
@@ -222,6 +280,149 @@ function renderCounters() {
     .join('');
 }
 
+// Format seconds into MM:SS
+function formatTimer(seconds) {
+  const m = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// Countdown Timer Engine
+function setupCounterTimer(counter) {
+  stopCounterTimer();
+
+  timerTotalSeconds = counter.timerSeconds || 0;
+  if (timerTotalSeconds <= 0) {
+    if (detailTimerWidget) detailTimerWidget.classList.add('hidden');
+    return;
+  }
+
+  if (detailTimerWidget) detailTimerWidget.classList.remove('hidden');
+  timerRemainingSeconds = timerTotalSeconds;
+  isTimerPaused = false;
+  if (btnTimerToggle) btnTimerToggle.textContent = '⏸';
+  updateTimerDisplay();
+  startTimerCountdown();
+}
+
+function updateTimerDisplay() {
+  if (detailTimerText) {
+    detailTimerText.textContent = formatTimer(timerRemainingSeconds);
+  }
+}
+
+function startTimerCountdown() {
+  clearInterval(timerIntervalId);
+  if (timerTotalSeconds <= 0) return;
+
+  timerIntervalId = setInterval(() => {
+    if (isTimerPaused) return;
+
+    if (timerRemainingSeconds > 0) {
+      timerRemainingSeconds--;
+      updateTimerDisplay();
+
+      if (timerRemainingSeconds === 0) {
+        sound.playTimeUp();
+        triggerHaptic('medium');
+        showToast("Time's up! ⏰");
+        stopCounterTimer();
+      }
+    }
+  }, 1000);
+}
+
+function resetCounterTimer() {
+  if (timerTotalSeconds > 0) {
+    timerRemainingSeconds = timerTotalSeconds;
+    isTimerPaused = false;
+    if (btnTimerToggle) btnTimerToggle.textContent = '⏸';
+    updateTimerDisplay();
+    startTimerCountdown();
+  }
+}
+
+function stopCounterTimer() {
+  if (timerIntervalId) {
+    clearInterval(timerIntervalId);
+    timerIntervalId = null;
+  }
+}
+
+// Touch Lock UI State
+function updateTouchLockUI(counter) {
+  const isLocked = counter.touchIncrement === false;
+  if (tallyTouchArea) {
+    tallyTouchArea.classList.toggle('touch-locked', isLocked);
+  }
+  if (iconTouchUnlocked && iconTouchLocked) {
+    iconTouchUnlocked.classList.toggle('hidden', isLocked);
+    iconTouchLocked.classList.toggle('hidden', !isLocked);
+  }
+  if (detailTapHintText) {
+    detailTapHintText.textContent = isLocked
+      ? 'Touch counting locked (use volume or buttons)'
+      : 'Tap anywhere to count';
+  }
+}
+
+// Milestone Progress & Notches (1/4, 2/4, 3/4, 4/4)
+function updateProgressNotches(counter) {
+  const notch25 = document.querySelector('.notch-25');
+  const notch50 = document.querySelector('.notch-50');
+  const notch75 = document.querySelector('.notch-75');
+
+  if (!notch25 || !notch50 || !notch75) return;
+
+  if (!counter.target || counter.target <= 0) {
+    notch25.classList.remove('reached');
+    notch50.classList.remove('reached');
+    notch75.classList.remove('reached');
+    return;
+  }
+
+  const q1 = Math.max(1, Math.ceil(0.25 * counter.target));
+  const q2 = Math.max(q1 + 1, Math.ceil(0.5 * counter.target));
+  const q3 = Math.max(q2 + 1, Math.ceil(0.75 * counter.target));
+
+  notch25.classList.toggle('reached', counter.count >= q1);
+  notch50.classList.toggle('reached', counter.count >= q2);
+  notch75.classList.toggle('reached', counter.count >= q3);
+}
+
+// Gentle & Smooth Milestone Celebration (Low-end device friendly)
+function triggerMilestoneCelebration(milestone) {
+  if (!milestone) return;
+
+  if (milestone.isFinal) {
+    sound.playMilestone(); // Goal_Reached.mp3
+    triggerHaptic('success');
+    showToast(milestone.text || 'Daily Goal Reached! 🎉');
+  } else {
+    sound.playQuarterMilestone(); // Goal_Split.mp3
+    triggerHaptic('light');
+
+    if (milestonePopup && milestonePopupText) {
+      milestonePopupText.textContent = milestone.text;
+      milestonePopup.classList.remove('hidden');
+
+      requestAnimationFrame(() => {
+        milestonePopup.classList.add('show');
+      });
+
+      if (milestoneTimeoutId) clearTimeout(milestoneTimeoutId);
+      milestoneTimeoutId = setTimeout(() => {
+        milestonePopup.classList.remove('show');
+        setTimeout(() => {
+          milestonePopup.classList.add('hidden');
+        }, 280);
+      }, 2200);
+    }
+  }
+}
+
 // Smooth Card Morphing Animation (Opening Tally)
 function openCounterDetail(counterId, cardElement) {
   const counter = store.getCounterById(counterId);
@@ -234,6 +435,8 @@ function openCounterDetail(counterId, cardElement) {
 
   // Populate data
   updateDetailView(counterId);
+  updateTouchLockUI(counter);
+  setupCounterTimer(counter);
   syncStateToAndroid(true);
 
   // Push history state for back navigation & swipe gestures
@@ -269,7 +472,8 @@ function openCounterDetail(counterId, cardElement) {
     void counterDetailView.offsetHeight;
 
     requestAnimationFrame(() => {
-      counterDetailView.style.transition = 'transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease, border-radius 0.38s ease';
+      counterDetailView.style.transition =
+        'transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease, border-radius 0.38s ease';
       counterDetailView.style.transform = 'translate(0px, 0px) scale(1, 1)';
       counterDetailView.style.borderRadius = '0px';
       counterDetailView.style.opacity = '1';
@@ -292,7 +496,8 @@ function closeCounterDetail(popHistory = true) {
     return;
   }
 
-  // Deactivate native volume counting when returning to home menu
+  // Deactivate native volume counting & stop timer
+  stopCounterTimer();
   syncStateToAndroid(false);
 
   if (activeCardElement) {
@@ -302,7 +507,8 @@ function closeCounterDetail(popHistory = true) {
     const transX = cardRect.left + cardRect.width / 2 - window.innerWidth / 2;
     const transY = cardRect.top + cardRect.height / 2 - window.innerHeight / 2;
 
-    counterDetailView.style.transition = 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, border-radius 0.32s ease';
+    counterDetailView.style.transition =
+      'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, border-radius 0.32s ease';
     counterDetailView.style.transform = `translate(${transX}px, ${transY}px) scale(${scaleX}, ${scaleY})`;
     counterDetailView.style.borderRadius = '20px';
     counterDetailView.style.opacity = '0';
@@ -350,6 +556,8 @@ function updateDetailView(counterId) {
     detailTargetBadge.classList.add('hidden');
     targetProgressBarContainer.classList.add('hidden');
   }
+
+  updateProgressNotches(counter);
 }
 
 // Step Chips
@@ -399,16 +607,27 @@ function hsvToRgb(h, s, v) {
 }
 
 function rgbToHsv(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  let max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0, v = max;
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  let max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  let h = 0,
+    s = 0,
+    v = max;
   let d = max - min;
   s = max === 0 ? 0 : d / max;
   if (max !== min) {
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
     h *= 60;
   }
@@ -527,7 +746,9 @@ function initColorWheel() {
   if (colorWheelStage) {
     colorWheelStage.addEventListener('pointerdown', e => {
       isWheelPointerDown = true;
-      try { colorWheelStage.setPointerCapture(e.pointerId); } catch (err) {}
+      try {
+        colorWheelStage.setPointerCapture(e.pointerId);
+      } catch (err) {}
       handleWheelPointer(e.clientX, e.clientY);
     });
 
@@ -540,7 +761,9 @@ function initColorWheel() {
     const endPointer = e => {
       if (isWheelPointerDown) {
         isWheelPointerDown = false;
-        try { colorWheelStage.releasePointerCapture(e.pointerId); } catch (err) {}
+        try {
+          colorWheelStage.releasePointerCapture(e.pointerId);
+        } catch (err) {}
       }
     };
     colorWheelStage.addEventListener('pointerup', endPointer);
@@ -580,29 +803,7 @@ function syncStateToAndroid(isSelected = !!activeCounterId) {
   }
 }
 
-// Callback from native Android (works with screen ON and screen OFF)
-window.syncCountFromNative = function(id, count, action) {
-  if (!id) return;
-  const counter = store.getCounterById(id);
-  if (!counter) return;
-
-  counter.count = count;
-  store.saveCounters();
-
-  if (activeCounterId === id) {
-    updateDetailView(id);
-    if (action === 'up' || action === 'down') {
-      animateNumberBump();
-    }
-    if (action === 'up' && counter.target && count >= counter.target && (count - (counter.step || 1)) < counter.target) {
-      sound.playMilestone();
-      triggerHaptic('success');
-      showToast('Daily Goal Reached! 🎉');
-    }
-  }
-};
-
-// Global handler for volume buttons when screen is ON
+// Global handler for physical volume buttons (Active only when a counter is selected)
 window.handleVolumeKey = function(direction) {
   if (!store.settings.volumeKeys || !activeCounterId) return;
 
@@ -612,10 +813,10 @@ window.handleVolumeKey = function(direction) {
       sound.playClick();
       triggerHaptic('light');
       animateNumberBump();
-      if (res.reachedTarget) {
-        sound.playMilestone();
-        triggerHaptic('success');
-        showToast('Daily Goal Reached! 🎉');
+      resetCounterTimer();
+
+      if (res.milestone) {
+        triggerMilestoneCelebration(res.milestone);
       }
     }
   } else if (direction === 'down') {
@@ -626,6 +827,102 @@ window.handleVolumeKey = function(direction) {
   }
 
   syncStateToAndroid(true);
+};
+
+// Timer Preset Chips Handler
+function updateActiveTimerChip(secondsVal) {
+  const sStr = String(secondsVal);
+  timerChips.forEach(chip => {
+    if (chip.dataset.seconds === sStr) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+}
+
+// ================= In-App GitHub Updater Engine =================
+async function checkForAppUpdate(isManual = false) {
+  try {
+    const response = await fetch(
+      'https://api.github.com/repos/KHILVANSH6789/Tally/releases/latest',
+      {
+        headers: { Accept: 'application/vnd.github.v3+json' },
+      }
+    );
+
+    if (!response.ok) {
+      if (isManual) showToast('Could not fetch latest release');
+      return;
+    }
+
+    const release = await response.json();
+    const latestTag = release.tag_name || '';
+
+    // Compare versions
+    const cleanCurrent = APP_VERSION.replace(/^v/, '');
+    const cleanLatest = latestTag.replace(/^v/, '').replace(/^Application_v/, '');
+
+    if (isNewerVersion(cleanLatest, cleanCurrent)) {
+      const apkAsset = (release.assets || []).find(a =>
+        a.name.toLowerCase().endsWith('.apk')
+      );
+      latestReleaseApkUrl = apkAsset ? apkAsset.browser_download_url : release.html_url;
+
+      updateVersionTag.textContent = latestTag;
+      const pubDate = new Date(release.published_at || Date.now());
+      updateReleaseDate.textContent = pubDate.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+      const notes = release.body
+        ? escapeHtml(release.body).replace(/\n/g, '<br>')
+        : 'Performance improvements and bug fixes.';
+      updateNotesBox.innerHTML = notes;
+
+      updateProgressContainer.classList.add('hidden');
+      btnDoUpdate.disabled = false;
+      btnDoUpdate.textContent = 'Update Now';
+      openModal(modalUpdate);
+    } else if (isManual) {
+      showToast(`Tally is up to date! (${APP_VERSION})`);
+    }
+  } catch (err) {
+    console.warn('Update check failed:', err);
+    if (isManual) showToast('Unable to check for updates');
+  }
+}
+
+function isNewerVersion(latest, current) {
+  const lParts = latest.split('.').map(Number);
+  const cParts = current.split('.').map(Number);
+  for (let i = 0; i < Math.max(lParts.length, cParts.length); i++) {
+    const l = lParts[i] || 0;
+    const c = cParts[i] || 0;
+    if (l > c) return true;
+    if (l < c) return false;
+  }
+  return false;
+}
+
+// Window Callbacks for Native Android Update Download
+window.onUpdateDownloadProgress = function(percent) {
+  if (updateProgressFill) updateProgressFill.style.width = percent + '%';
+  if (updateProgressText) updateProgressText.textContent = `Downloading APK... ${percent}%`;
+  if (percent >= 100) {
+    if (updateProgressText) updateProgressText.textContent = 'Download complete. Installing...';
+  }
+};
+
+window.onUpdateDownloadError = function(errMsg) {
+  showToast('Update download failed: ' + errMsg);
+  if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
+  if (btnDoUpdate) {
+    btnDoUpdate.disabled = false;
+    btnDoUpdate.textContent = 'Retry Update';
+  }
 };
 
 // Attach Event Listeners
@@ -642,22 +939,70 @@ function attachEventListeners() {
   // Close Detail View
   btnCloseDetail.addEventListener('click', () => closeCounterDetail(true));
 
+  // Quick Touch Lock Toggle in Detail Header
+  if (btnToggleTouchLock) {
+    btnToggleTouchLock.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!activeCounterId) return;
+      const counter = store.getCounterById(activeCounterId);
+      if (!counter) return;
+
+      const newTouchState = counter.touchIncrement === false;
+      store.updateCounter(activeCounterId, { touchIncrement: newTouchState });
+      updateTouchLockUI({ ...counter, touchIncrement: newTouchState });
+      triggerHaptic('light');
+      showToast(newTouchState ? 'Touch counting enabled' : 'Touch counting locked');
+    });
+  }
+
   // Large Touch Area Counting
   tallyTouchArea.addEventListener('click', () => {
     if (!activeCounterId) return;
+    const counter = store.getCounterById(activeCounterId);
+    if (!counter) return;
+
+    // Prevent accidental touch if touch increment is disabled
+    if (counter.touchIncrement === false) {
+      tallyTouchArea.classList.remove('touch-lock-shake');
+      void tallyTouchArea.offsetWidth;
+      tallyTouchArea.classList.add('touch-lock-shake');
+      triggerHaptic('light');
+      return;
+    }
+
     const res = store.incrementCounter(activeCounterId, currentStep);
     if (res) {
       sound.playClick();
       triggerHaptic('light');
       animateNumberBump();
+      resetCounterTimer();
       syncStateToAndroid(true);
-      if (res.reachedTarget) {
-        sound.playMilestone();
-        triggerHaptic('success');
-        showToast('Daily Goal Reached! 🎉');
+
+      if (res.milestone) {
+        triggerMilestoneCelebration(res.milestone);
       }
     }
   });
+
+  // Timer Mini Controls
+  if (btnTimerToggle) {
+    btnTimerToggle.addEventListener('click', e => {
+      e.stopPropagation();
+      if (timerTotalSeconds <= 0) return;
+      isTimerPaused = !isTimerPaused;
+      btnTimerToggle.textContent = isTimerPaused ? '▶' : '⏸';
+      triggerHaptic('light');
+    });
+  }
+
+  if (btnTimerReset) {
+    btnTimerReset.addEventListener('click', e => {
+      e.stopPropagation();
+      resetCounterTimer();
+      triggerHaptic('light');
+      showToast('Timer reset');
+    });
+  }
 
   // Decrement button
   btnDecrement.addEventListener('click', e => {
@@ -694,6 +1039,13 @@ function attachEventListeners() {
     inputCounterName.value = counter.name;
     inputCounterInitial.value = counter.count;
     inputCounterTarget.value = counter.target || '';
+    if (inputCounterTimer) {
+      inputCounterTimer.value = counter.timerSeconds || 0;
+      updateActiveTimerChip(counter.timerSeconds || 0);
+    }
+    if (inputCounterTouch) {
+      inputCounterTouch.checked = counter.touchIncrement !== false;
+    }
     drawColorWheel();
     setColorWheelFromHex(counter.color || '#10b981');
     btnDeleteCounter.classList.remove('hidden');
@@ -707,13 +1059,17 @@ function attachEventListeners() {
     const counter = store.getCounterById(activeCounterId);
     if (!counter) return;
 
-    showConfirm('Delete Counter', `Are you sure you want to delete "${counter.name}"? This cannot be undone.`, () => {
-      const idToDelete = activeCounterId;
-      closeCounterDetail(true);
-      store.deleteCounter(idToDelete);
-      triggerHaptic('medium');
-      showToast('Counter deleted');
-    });
+    showConfirm(
+      'Delete Counter',
+      `Are you sure you want to delete "${counter.name}"? This cannot be undone.`,
+      () => {
+        const idToDelete = activeCounterId;
+        closeCounterDetail(true);
+        store.deleteCounter(idToDelete);
+        triggerHaptic('medium');
+        showToast('Counter deleted');
+      }
+    );
   });
 
   // Delete counter button in edit modal
@@ -724,15 +1080,19 @@ function attachEventListeners() {
     const counter = store.getCounterById(id);
     if (!counter) return;
 
-    showConfirm('Delete Counter', `Are you sure you want to delete "${counter.name}"? This cannot be undone.`, () => {
-      closeModal(modalCounter);
-      if (activeCounterId === id) {
-        closeCounterDetail(true);
+    showConfirm(
+      'Delete Counter',
+      `Are you sure you want to delete "${counter.name}"? This cannot be undone.`,
+      () => {
+        closeModal(modalCounter);
+        if (activeCounterId === id) {
+          closeCounterDetail(true);
+        }
+        store.deleteCounter(id);
+        triggerHaptic('medium');
+        showToast('Counter deleted');
       }
-      store.deleteCounter(id);
-      triggerHaptic('medium');
-      showToast('Counter deleted');
-    });
+    );
   });
 
   // Step selector
@@ -749,12 +1109,37 @@ function attachEventListeners() {
     });
   });
 
+  // Timer Preset Chips selection
+  timerChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const sec = parseInt(chip.dataset.seconds, 10) || 0;
+      if (inputCounterTimer) {
+        inputCounterTimer.value = sec;
+      }
+      updateActiveTimerChip(sec);
+      triggerHaptic('light');
+    });
+  });
+
+  if (inputCounterTimer) {
+    inputCounterTimer.addEventListener('input', e => {
+      updateActiveTimerChip(e.target.value);
+    });
+  }
+
   // Add counter buttons
   document.getElementById('btn-add-counter').addEventListener('click', () => {
     modalTitle.textContent = 'New Counter';
     formCounter.reset();
     inputCounterId.value = '';
     inputCounterInitial.value = '0';
+    if (inputCounterTimer) {
+      inputCounterTimer.value = '0';
+      updateActiveTimerChip(0);
+    }
+    if (inputCounterTouch) {
+      inputCounterTouch.checked = true;
+    }
     drawColorWheel();
     setColorWheelFromHex('#10b981');
     btnDeleteCounter.classList.add('hidden');
@@ -766,6 +1151,13 @@ function attachEventListeners() {
     formCounter.reset();
     inputCounterId.value = '';
     inputCounterInitial.value = '0';
+    if (inputCounterTimer) {
+      inputCounterTimer.value = '0';
+      updateActiveTimerChip(0);
+    }
+    if (inputCounterTouch) {
+      inputCounterTouch.checked = true;
+    }
     drawColorWheel();
     setColorWheelFromHex('#10b981');
     btnDeleteCounter.classList.add('hidden');
@@ -779,6 +1171,8 @@ function attachEventListeners() {
     const name = inputCounterName.value.trim();
     const initial = parseInt(inputCounterInitial.value, 10) || 0;
     const target = inputCounterTarget.value ? parseInt(inputCounterTarget.value, 10) : null;
+    const timerSeconds = inputCounterTimer ? parseInt(inputCounterTimer.value, 10) || 0 : 0;
+    const touchIncrement = inputCounterTouch ? inputCounterTouch.checked : true;
 
     if (!name) return;
 
@@ -788,6 +1182,8 @@ function attachEventListeners() {
         count: initial,
         target,
         color: selectedColor,
+        timerSeconds,
+        touchIncrement,
       });
       showToast('Counter updated');
     } else {
@@ -796,6 +1192,8 @@ function attachEventListeners() {
         color: selectedColor,
         initialCount: initial,
         target,
+        timerSeconds,
+        touchIncrement,
       });
       showToast('Counter created');
     }
@@ -803,7 +1201,7 @@ function attachEventListeners() {
     closeModal(modalCounter);
   });
 
-  // History modal
+  // History modal & Date header separators
   document.getElementById('btn-open-history').addEventListener('click', () => {
     renderHistoryView();
     openModal(modalHistory);
@@ -836,8 +1234,13 @@ function attachEventListeners() {
     historyContent.innerHTML = sortedDates
       .map(dateStr => {
         const nominalDate = formatNominalDate(dateStr);
-        const entries = counters
-          .filter(c => c.history && c.history[dateStr] !== undefined)
+        const matchingCounters = counters.filter(
+          c => c.history && c.history[dateStr] !== undefined
+        );
+
+        if (matchingCounters.length === 0) return '';
+
+        const itemsHtml = matchingCounters
           .map(
             c => `
             <div class="history-item">
@@ -850,7 +1253,16 @@ function attachEventListeners() {
           `
           )
           .join('');
-        return entries;
+
+        return `
+          <div class="history-date-group">
+            <div class="history-date-separator">
+              <span class="date-sep-badge">${nominalDate}</span>
+              <div class="date-sep-line"></div>
+            </div>
+            ${itemsHtml}
+          </div>
+        `;
       })
       .join('');
   }
@@ -881,7 +1293,36 @@ function attachEventListeners() {
     settingVolumeKeys.addEventListener('change', e => {
       store.updateSettings({ volumeKeys: e.target.checked });
       syncStateToAndroid(!!activeCounterId);
-      showToast(e.target.checked ? 'Side Volume Button counting ON' : 'Side Volume Button counting OFF');
+      showToast(
+        e.target.checked ? 'Volume Button counting ON' : 'Volume Button counting OFF'
+      );
+    });
+  }
+
+  if (btnCheckUpdates) {
+    btnCheckUpdates.addEventListener('click', () => {
+      checkForAppUpdate(true);
+    });
+  }
+
+  if (btnDoUpdate) {
+    btnDoUpdate.addEventListener('click', () => {
+      if (!latestReleaseApkUrl) return;
+
+      if (
+        window.AndroidBridge &&
+        typeof window.AndroidBridge.downloadAndInstallUpdate === 'function' &&
+        latestReleaseApkUrl.toLowerCase().endsWith('.apk')
+      ) {
+        updateProgressContainer.classList.remove('hidden');
+        if (updateProgressFill) updateProgressFill.style.width = '0%';
+        if (updateProgressText) updateProgressText.textContent = 'Starting download...';
+        btnDoUpdate.disabled = true;
+        btnDoUpdate.textContent = 'Downloading...';
+        window.AndroidBridge.downloadAndInstallUpdate(latestReleaseApkUrl);
+      } else {
+        window.open(latestReleaseApkUrl, '_system');
+      }
     });
   }
 
@@ -930,6 +1371,10 @@ function attachEventListeners() {
       confirmCallback = null;
       return;
     }
+    if (!modalUpdate.classList.contains('hidden')) {
+      closeModal(modalUpdate);
+      return;
+    }
     if (!modalCounter.classList.contains('hidden')) {
       closeModal(modalCounter);
       return;
@@ -973,6 +1418,8 @@ function attachEventListeners() {
     } else if (!modalConfirm.classList.contains('hidden')) {
       closeModal(modalConfirm);
       confirmCallback = null;
+    } else if (!modalUpdate.classList.contains('hidden')) {
+      closeModal(modalUpdate);
     } else if (!modalCounter.classList.contains('hidden')) {
       closeModal(modalCounter);
     } else if (!modalHistory.classList.contains('hidden')) {

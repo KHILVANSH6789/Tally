@@ -1,0 +1,56 @@
+@font-face {
+  font-family: 'Comic Relief';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/comic_relief_400_normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lobster Two';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/lobster_two_400_italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lobster Two';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/lobster_two_700_italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lobster Two';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/lobster_two_400_normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lobster Two';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/lobster_two_700_normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ubuntu_400_normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ubuntu_500_normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/ubuntu_700_normal.woff2') format('woff2');
+}

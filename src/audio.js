@@ -10,11 +10,15 @@ class SoundEngine {
       tap: '/sounds/Tap_Normal.mp3',
       decrease: '/sounds/Tap_Decrease.mp3',
       goal: '/sounds/Goal_Reached.mp3',
+      goalSplit: '/sounds/Goal_Split.mp3',
+      timeUp: '/sounds/Time_Up.mp3',
     };
 
     // Preload audio objects
     this.introAudio = null;
     this.goalAudio = null;
+    this.goalSplitAudio = null;
+    this.timeUpAudio = null;
 
     // Fast click pools for instant zero-latency rapid tapping
     this.clickPool = [];
@@ -34,6 +38,12 @@ class SoundEngine {
       this.goalAudio = new Audio(this.urls.goal);
       this.goalAudio.preload = 'auto';
 
+      this.goalSplitAudio = new Audio(this.urls.goalSplit);
+      this.goalSplitAudio.preload = 'auto';
+
+      this.timeUpAudio = new Audio(this.urls.timeUp);
+      this.timeUpAudio.preload = 'auto';
+
       for (let i = 0; i < this.poolSize; i++) {
         const tapAudio = new Audio(this.urls.tap);
         tapAudio.preload = 'auto';
@@ -50,7 +60,7 @@ class SoundEngine {
     }
   }
 
-  // Play app opening intro sound
+  // Play app opening intro sound (respects device media volume)
   playIntro() {
     if (!this.enabled) return;
     try {
@@ -132,7 +142,22 @@ class SoundEngine {
     // No-op
   }
 
-  // Goal / Daily Target reached sound (Goal_Reached.mp3)
+  // Quarter milestone split sound (Goal_Split.mp3)
+  playQuarterMilestone() {
+    if (!this.enabled) return;
+    try {
+      if (!this.goalSplitAudio) {
+        this.goalSplitAudio = new Audio(this.urls.goalSplit);
+      }
+      this.goalSplitAudio.currentTime = 0;
+      this.goalSplitAudio.volume = 1.0;
+      this.goalSplitAudio.play().catch(() => {});
+    } catch (e) {
+      // safe ignore
+    }
+  }
+
+  // Goal / Daily Target 100% reached sound (Goal_Reached.mp3)
   playMilestone() {
     if (!this.enabled) return;
     try {
@@ -142,6 +167,21 @@ class SoundEngine {
       this.goalAudio.currentTime = 0;
       this.goalAudio.volume = 1.0;
       this.goalAudio.play().catch(() => {});
+    } catch (e) {
+      // safe ignore
+    }
+  }
+
+  // Counter Timer expired sound (Time_Up.mp3)
+  playTimeUp() {
+    if (!this.enabled) return;
+    try {
+      if (!this.timeUpAudio) {
+        this.timeUpAudio = new Audio(this.urls.timeUp);
+      }
+      this.timeUpAudio.currentTime = 0;
+      this.timeUpAudio.volume = 1.0;
+      this.timeUpAudio.play().catch(() => {});
     } catch (e) {
       // safe ignore
     }
