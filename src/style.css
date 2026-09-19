@@ -642,30 +642,38 @@ body {
   transform: scale(0.95);
 }
 
-.detail-meta {
+.detail-title-group {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex: 1;
+  margin: 0 10px;
+  overflow: hidden;
 }
 
 .detail-color-pill {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
   border-radius: 50%;
   background: var(--active-accent, var(--accent-emerald));
   box-shadow: 0 0 10px var(--active-accent, var(--accent-emerald));
+  flex-shrink: 0;
 }
 
-.detail-title-text {
+.detail-counter-title {
   font-family: var(--font-title);
-  font-size: 1.55rem;
+  font-size: 1.28rem;
   font-weight: 700;
   color: var(--text-primary);
-  max-width: 180px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   letter-spacing: 0.01em;
+  line-height: 1.25;
+  margin: 0;
 }
 
 .detail-actions {
@@ -1816,16 +1824,116 @@ input:checked + .toggle-slider:before {
 }
 
 .update-progress-container {
-  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.update-progress-container .progress-container {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  overflow: hidden;
 }
 
 .update-progress-text {
   display: block;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--accent-emerald);
-  margin-top: 6px;
+  margin-top: 8px;
+}
+
+.update-security-notice {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.security-notice-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-emerald);
+}
+
+.security-notice-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.security-notice-text strong {
+  color: var(--text-primary);
+}
+
+.security-notice-text em {
+  color: #7dd3fc;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* GitHub Link Buttons */
+.github-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.github-link-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--border-focus);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.github-link-btn-subtle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.github-link-btn-subtle:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .secondary-btn-compact {
