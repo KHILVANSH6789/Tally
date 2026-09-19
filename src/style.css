@@ -109,7 +109,7 @@ body {
   overscroll-behavior-x: none;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top);
+  padding-top: 0 !important;
   padding-bottom: env(safe-area-inset-bottom);
   direction: ltr !important;
   scrollbar-width: none !important;
@@ -120,6 +120,7 @@ body {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
+  padding-top: 0 !important;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -199,12 +200,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: rgba(9, 12, 16, 0.85);
+  padding: 12px 20px 10px;
+  background: rgba(9, 12, 16, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   position: sticky;
-  top: 0;
+  top: 0 !important;
   z-index: 20;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -271,7 +272,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  padding: 16px 20px 8px;
+  padding: 12px 20px 8px;
 }
 
 .stat-card {
@@ -318,6 +319,63 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 0.01em;
+}
+
+.new-counter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #042416;
+  font-family: var(--font-title);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 7px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: all 0.2s var(--ease-spring);
+}
+
+.new-counter-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 5px 18px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  filter: brightness(1.08);
+}
+
+.new-counter-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.new-counter-btn svg {
+  stroke: #042416;
+  stroke-width: 2.5;
+  transition: transform 0.22s var(--ease-spring);
+}
+
+.new-counter-btn:hover svg {
+  transform: rotate(90deg);
+}
+
+.card-timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-full);
+  color: #7dd3fc;
+}
+
+.card-timer-pill svg {
+  stroke: #7dd3fc;
+  flex-shrink: 0;
 }
 
 .section-caption {
@@ -1596,7 +1654,96 @@ input:checked + .toggle-slider:before {
   margin-top: 4px;
 }
 
-/* ================= History Date Groups & Separators ================= */
+/* ================= History Date Groups & Toolbar ================= */
+.history-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.history-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.history-search-box:focus-within {
+  border-color: var(--accent-emerald);
+  background: var(--bg-card-hover);
+}
+
+.history-search-box .search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.history-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.history-search-input::placeholder {
+  color: var(--text-dim);
+}
+
+.history-search-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.history-search-clear:hover {
+  color: var(--text-primary);
+}
+
+.history-sort-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.history-sort-select {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.history-sort-select:focus,
+.history-sort-select:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
 .history-date-group {
   margin-bottom: 20px;
 }

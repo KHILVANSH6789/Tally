@@ -33,6 +33,62 @@ export function formatNominalDate(dateStr) {
   });
 }
 
+export function getMilestonesForTarget(target) {
+  if (!target || target <= 0) return [];
+  if (target < 4) {
+    return [{ count: target, text: 'Daily Goal Reached! 🎉', isFinal: true, pct: 100 }];
+  }
+
+  // 1. If divisible by 4: quarters (e.g. 100 -> 25, 50, 75, 100; 8 -> 2, 4, 6, 8)
+  if (target % 4 === 0) {
+    const s = target / 4;
+    return [
+      { count: s * 1, text: '1/4th of the way there! 🌟', isFinal: false, pct: 25 },
+      { count: s * 2, text: 'Halfway there! 2/4 completed! 🚀', isFinal: false, pct: 50 },
+      { count: s * 3, text: '3/4 of the way there! ⚡', isFinal: false, pct: 75 },
+      { count: target, text: 'Daily Goal Reached! 🎉', isFinal: true, pct: 100 },
+    ];
+  }
+
+  // 2. If divisible by 3: thirds (e.g. 30 -> 10, 20, 30; 15 -> 5, 10, 15)
+  if (target % 3 === 0) {
+    const s = target / 3;
+    return [
+      { count: s * 1, text: '1/3rd of the way there! 🌟', isFinal: false, pct: 33 },
+      { count: s * 2, text: '2/3rds of the way there! ⚡', isFinal: false, pct: 67 },
+      { count: target, text: 'Daily Goal Reached! 🎉', isFinal: true, pct: 100 },
+    ];
+  }
+
+  // 3. If divisible by 2: halfway (e.g. 10 -> 5, 10; 14 -> 7, 14)
+  if (target % 2 === 0) {
+    const s = target / 2;
+    return [
+      { count: s, text: 'Halfway there! 50% completed! 🚀', isFinal: false, pct: 50 },
+      { count: target, text: 'Daily Goal Reached! 🎉', isFinal: true, pct: 100 },
+    ];
+  }
+
+  // 4. If divisible by 5 and target <= 50 (e.g. 25 -> 5, 10, 15, 20, 25)
+  if (target % 5 === 0 && target <= 50) {
+    const s = target / 5;
+    return [
+      { count: s * 1, text: '1/5th of the way there! 🌟', isFinal: false, pct: 20 },
+      { count: s * 2, text: '2/5ths of the way there! 🚀', isFinal: false, pct: 40 },
+      { count: s * 3, text: 'Over halfway! 3/5 completed! ⚡', isFinal: false, pct: 60 },
+      { count: s * 4, text: 'Almost there! 4/5 completed! 🔥', isFinal: false, pct: 80 },
+      { count: target, text: 'Daily Goal Reached! 🎉', isFinal: true, pct: 100 },
+    ];
+  }
+
+  // 5. Fallback for odd or prime targets (e.g. 7 -> halfway at 4)
+  const half = Math.ceil(target / 2);
+  return [
+    { count: half, text: 'Halfway there! Keep going! 🚀', isFinal: false, pct: Math.round((half / target) * 100) },
+    { count: target, text: 'Daily Goal Reached! 🎉', isFinal: true, pct: 100 },
+  ];
+}
+
 const DEFAULT_COUNTERS = [
   {
     id: 'counter-water',
@@ -229,19 +285,13 @@ class DataStore {
 
     let milestone = null;
     if (counter.target && counter.target > 0) {
-      const q1 = Math.max(1, Math.ceil(0.25 * counter.target));
-      const q2 = Math.max(q1 + 1, Math.ceil(0.50 * counter.target));
-      const q3 = Math.max(q2 + 1, Math.ceil(0.75 * counter.target));
-      const q4 = counter.target;
-
-      if (prevCount < q4 && counter.count >= q4) {
-        milestone = { quarter: 4, text: "Daily Goal Reached! 🎉", isFinal: true };
-      } else if (q3 < q4 && prevCount < q3 && counter.count >= q3) {
-        milestone = { quarter: 3, text: "3/4 of the way there! ⚡", isFinal: false };
-      } else if (q2 < q3 && prevCount < q2 && counter.count >= q2) {
-        milestone = { quarter: 2, text: "Halfway there! 2/4 completed! 🚀", isFinal: false };
-      } else if (q1 < q2 && prevCount < q1 && counter.count >= q1) {
-        milestone = { quarter: 1, text: "1/4th of the way there! 🌟", isFinal: false };
+      const milestones = getMilestonesForTarget(counter.target);
+      for (let i = milestones.length - 1; i >= 0; i--) {
+        const m = milestones[i];
+        if (prevCount < m.count && counter.count >= m.count) {
+          milestone = m;
+          break;
+        }
       }
     }
 

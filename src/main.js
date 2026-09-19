@@ -1,10 +1,10 @@
-import { store, formatNominalDate, getTodayDateString } from './storage.js';
+import { store, formatNominalDate, getTodayDateString, getMilestonesForTarget } from './storage.js';
 import { sound } from './audio.js';
 
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { App } from '@capacitor/app';
 
-const APP_VERSION = 'v1.0.2';
+const APP_VERSION = 'v1.0.3';
 
 async function triggerHaptic(type = 'light') {
   if (!store.settings.haptics) return;
@@ -49,6 +49,7 @@ let timerIntervalId = null;
 let timerRemainingSeconds = 0;
 let timerTotalSeconds = 0;
 let isTimerPaused = false;
+let isTimerRunning = false;
 
 // Milestone celebration state
 let milestoneTimeoutId = null;
@@ -123,6 +124,9 @@ let selectedColor = '#10b981';
 
 const modalHistory = document.getElementById('modal-history');
 const historyContent = document.getElementById('history-content');
+const inputHistorySearch = document.getElementById('input-history-search');
+const btnClearHistorySearch = document.getElementById('btn-clear-history-search');
+const selectHistorySort = document.getElementById('select-history-sort');
 const modalSettings = document.getElementById('modal-settings');
 const settingMidnightReset = document.getElementById('setting-midnight-reset');
 const settingHaptics = document.getElementById('setting-haptics');
@@ -262,6 +266,15 @@ function renderCounters() {
       const targetHtml = c.target
         ? `<span class="card-target-pill">Goal: ${c.target}</span>`
         : '';
+      const timerHtml = (c.timerSeconds && c.timerSeconds > 0)
+        ? `<span class="card-timer-pill" title="Timer: ${formatTimer(c.timerSeconds)}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <polyline points="12 7 12 12 15 15"></polyline>
+            </svg>
+            ${formatTimer(c.timerSeconds)}
+          </span>`
+        : '';
       return `
         <div class="counter-card" data-id="${c.id}" style="--card-accent: ${c.color}">
           <div class="counter-card-info">
@@ -269,6 +282,7 @@ function renderCounters() {
             <div class="counter-card-meta">
               <span>Today</span>
               ${targetHtml}
+              ${timerHtml}
             </div>
           </div>
           <div class="counter-card-right">
@@ -289,7 +303,7 @@ function formatTimer(seconds) {
   return `${m}:${s}`;
 }
 
-// Countdown Timer Engine
+// Countdown Timer Engine (Awaits first tap/increase to start)
 function setupCounterTimer(counter) {
   stopCounterTimer();
 
@@ -302,9 +316,9 @@ function setupCounterTimer(counter) {
   if (detailTimerWidget) detailTimerWidget.classList.remove('hidden');
   timerRemainingSeconds = timerTotalSeconds;
   isTimerPaused = false;
-  if (btnTimerToggle) btnTimerToggle.textContent = '⏸';
+  isTimerRunning = false;
+  if (btnTimerToggle) btnTimerToggle.textContent = '▶';
   updateTimerDisplay();
-  startTimerCountdown();
 }
 
 function updateTimerDisplay() {
@@ -329,18 +343,33 @@ function startTimerCountdown() {
         triggerHaptic('medium');
         showToast("Time's up! ⏰");
         stopCounterTimer();
+        if (btnTimerToggle) btnTimerToggle.textContent = '▶';
       }
     }
   }, 1000);
+}
+
+// Triggered when tally count increases (starts timer or resets back to full time)
+function onTallyCountIncrease() {
+  if (timerTotalSeconds > 0) {
+    timerRemainingSeconds = timerTotalSeconds;
+    isTimerRunning = true;
+    isTimerPaused = false;
+    if (btnTimerToggle) btnTimerToggle.textContent = '⏸';
+    updateTimerDisplay();
+    startTimerCountdown();
+  }
 }
 
 function resetCounterTimer() {
   if (timerTotalSeconds > 0) {
     timerRemainingSeconds = timerTotalSeconds;
     isTimerPaused = false;
-    if (btnTimerToggle) btnTimerToggle.textContent = '⏸';
     updateTimerDisplay();
-    startTimerCountdown();
+    if (isTimerRunning) {
+      if (btnTimerToggle) btnTimerToggle.textContent = '⏸';
+      startTimerCountdown();
+    }
   }
 }
 
@@ -349,6 +378,8 @@ function stopCounterTimer() {
     clearInterval(timerIntervalId);
     timerIntervalId = null;
   }
+  isTimerRunning = false;
+  isTimerPaused = false;
 }
 
 // Touch Lock UI State
@@ -382,28 +413,26 @@ function updateTouchLockUI(counter) {
   }
 }
 
-// Milestone Progress & Notches (1/4, 2/4, 3/4, 4/4)
+// Subdivided Dynamic Milestone Targets & Progress Notches
 function updateProgressNotches(counter) {
-  const notch25 = document.querySelector('.notch-25');
-  const notch50 = document.querySelector('.notch-50');
-  const notch75 = document.querySelector('.notch-75');
-
-  if (!notch25 || !notch50 || !notch75) return;
+  const container = document.getElementById('progress-notches');
+  if (!container) return;
 
   if (!counter.target || counter.target <= 0) {
-    notch25.classList.remove('reached');
-    notch50.classList.remove('reached');
-    notch75.classList.remove('reached');
+    container.innerHTML = '';
     return;
   }
 
-  const q1 = Math.max(1, Math.ceil(0.25 * counter.target));
-  const q2 = Math.max(q1 + 1, Math.ceil(0.5 * counter.target));
-  const q3 = Math.max(q2 + 1, Math.ceil(0.75 * counter.target));
+  const milestones = getMilestonesForTarget(counter.target);
+  // Intermediate milestone notches (excluding 100% end goal)
+  const intermediate = milestones.filter(m => !m.isFinal);
 
-  notch25.classList.toggle('reached', counter.count >= q1);
-  notch50.classList.toggle('reached', counter.count >= q2);
-  notch75.classList.toggle('reached', counter.count >= q3);
+  container.innerHTML = intermediate
+    .map(m => {
+      const isReached = counter.count >= m.count;
+      return `<span class="progress-notch ${isReached ? 'reached' : ''}" style="left: ${m.pct}%" title="${m.count} (${m.pct}%)"></span>`;
+    })
+    .join('');
 }
 
 // Gentle & Smooth Milestone Celebration (Low-end device friendly)
@@ -827,7 +856,7 @@ window.handleVolumeKey = function(direction) {
       sound.playClick();
       triggerHaptic('light');
       animateNumberBump();
-      resetCounterTimer();
+      onTallyCountIncrease();
 
       if (res.milestone) {
         triggerMilestoneCelebration(res.milestone);
@@ -989,7 +1018,7 @@ function attachEventListeners() {
       sound.playClick();
       triggerHaptic('light');
       animateNumberBump();
-      resetCounterTimer();
+      onTallyCountIncrease();
       syncStateToAndroid(true);
 
       if (res.milestone) {
@@ -1003,8 +1032,15 @@ function attachEventListeners() {
     btnTimerToggle.addEventListener('click', e => {
       e.stopPropagation();
       if (timerTotalSeconds <= 0) return;
-      isTimerPaused = !isTimerPaused;
-      btnTimerToggle.textContent = isTimerPaused ? '▶' : '⏸';
+      if (!isTimerRunning) {
+        isTimerRunning = true;
+        isTimerPaused = false;
+        btnTimerToggle.textContent = '⏸';
+        startTimerCountdown();
+      } else {
+        isTimerPaused = !isTimerPaused;
+        btnTimerToggle.textContent = isTimerPaused ? '▶' : '⏸';
+      }
       triggerHaptic('light');
     });
   }
@@ -1204,25 +1240,76 @@ function attachEventListeners() {
     closeModal(modalCounter);
   });
 
-  // History modal & Date header separators
+  // History modal & Date header separators with search and sorting
   document.getElementById('btn-open-history').addEventListener('click', () => {
     renderHistoryView();
     openModal(modalHistory);
   });
 
+  if (inputHistorySearch) {
+    inputHistorySearch.addEventListener('input', () => {
+      renderHistoryView();
+    });
+  }
+
+  if (btnClearHistorySearch) {
+    btnClearHistorySearch.addEventListener('click', () => {
+      if (inputHistorySearch) inputHistorySearch.value = '';
+      renderHistoryView();
+      if (inputHistorySearch) inputHistorySearch.focus();
+    });
+  }
+
+  if (selectHistorySort) {
+    selectHistorySort.addEventListener('change', () => {
+      renderHistoryView();
+    });
+  }
+
   function renderHistoryView() {
     const counters = store.getCounters();
-    const allDates = new Set();
+    const query = inputHistorySearch ? inputHistorySearch.value.trim().toLowerCase() : '';
+    const sortMode = selectHistorySort ? selectHistorySort.value : 'date-desc';
 
+    if (btnClearHistorySearch) {
+      btnClearHistorySearch.classList.toggle('hidden', !query);
+    }
+
+    // Collect all records: { dateStr, nominalDate, counterId, counterName, count, searchCorpus }
+    const records = [];
     counters.forEach(c => {
       if (c.history) {
-        Object.keys(c.history).forEach(d => allDates.add(d));
+        Object.entries(c.history).forEach(([dateStr, count]) => {
+          const nominalDate = formatNominalDate(dateStr);
+          let dayName = '';
+          let monthName = '';
+          let yearStr = '';
+          let dayNumStr = '';
+          try {
+            const parts = dateStr.split('-').map(Number);
+            if (parts.length === 3) {
+              const d = new Date(parts[0], parts[1] - 1, parts[2]);
+              dayName = d.toLocaleDateString(undefined, { weekday: 'long' });
+              monthName = d.toLocaleDateString(undefined, { month: 'long' });
+              yearStr = String(parts[0]);
+              dayNumStr = String(parts[2]);
+            }
+          } catch (e) {}
+
+          records.push({
+            dateStr,
+            nominalDate,
+            counterId: c.id,
+            counterName: c.name,
+            color: c.color || '#10b981',
+            count: Number(count) || 0,
+            searchCorpus: `${nominalDate} ${dateStr} ${dayName} ${monthName} ${yearStr} ${dayNumStr} ${c.name}`.toLowerCase(),
+          });
+        });
       }
     });
 
-    const sortedDates = Array.from(allDates).sort((a, b) => b.localeCompare(a));
-
-    if (sortedDates.length === 0) {
+    if (records.length === 0) {
       historyContent.innerHTML = `
         <div class="empty-history-text">
           <p>No past daily logs recorded yet.</p>
@@ -1234,40 +1321,88 @@ function attachEventListeners() {
       return;
     }
 
-    historyContent.innerHTML = sortedDates
-      .map(dateStr => {
-        const nominalDate = formatNominalDate(dateStr);
-        const matchingCounters = counters.filter(
-          c => c.history && c.history[dateStr] !== undefined
-        );
+    // Filter by search query
+    const filteredRecords = query
+      ? records.filter(r => r.searchCorpus.includes(query))
+      : records;
 
-        if (matchingCounters.length === 0) return '';
+    if (filteredRecords.length === 0) {
+      historyContent.innerHTML = `
+        <div class="empty-history-text">
+          <p>No records matching "${escapeHtml(inputHistorySearch.value.trim())}"</p>
+          <p style="font-size: 0.8rem; margin-top: 6px; color: var(--text-dim);">
+            Try searching by day (e.g. Monday), month (e.g. September), date, or counter name.
+          </p>
+        </div>
+      `;
+      return;
+    }
 
-        const itemsHtml = matchingCounters
-          .map(
-            c => `
+    // Sort & Render
+    if (sortMode === 'date-desc' || sortMode === 'date-asc') {
+      const dates = Array.from(new Set(filteredRecords.map(r => r.dateStr)));
+      dates.sort((a, b) => (sortMode === 'date-desc' ? b.localeCompare(a) : a.localeCompare(b)));
+
+      historyContent.innerHTML = dates
+        .map(dateStr => {
+          const dateRecords = filteredRecords.filter(r => r.dateStr === dateStr);
+          dateRecords.sort((a, b) => b.count - a.count);
+          const nominalDate = dateRecords[0].nominalDate;
+
+          const itemsHtml = dateRecords
+            .map(
+              r => `
             <div class="history-item">
               <div>
-                <div class="history-item-date">${nominalDate}</div>
-                <div class="history-item-counter">${escapeHtml(c.name)}</div>
+                <div class="history-item-date">${r.nominalDate}</div>
+                <div class="history-item-counter">${escapeHtml(r.counterName)}</div>
               </div>
-              <span class="history-item-count">${c.history[dateStr]}</span>
+              <span class="history-item-count">${r.count}</span>
             </div>
           `
-          )
-          .join('');
+            )
+            .join('');
 
-        return `
-          <div class="history-date-group">
-            <div class="history-date-separator">
-              <span class="date-sep-badge">${nominalDate}</span>
-              <div class="date-sep-line"></div>
+          return `
+            <div class="history-date-group">
+              <div class="history-date-separator">
+                <span class="date-sep-badge">${nominalDate}</span>
+                <div class="date-sep-line"></div>
+              </div>
+              ${itemsHtml}
             </div>
-            ${itemsHtml}
-          </div>
-        `;
-      })
-      .join('');
+          `;
+        })
+        .join('');
+    } else {
+      // Sort by count or name
+      const sortedRecords = [...filteredRecords];
+      if (sortMode === 'count-desc') {
+        sortedRecords.sort((a, b) => b.count - a.count);
+      } else if (sortMode === 'count-asc') {
+        sortedRecords.sort((a, b) => a.count - b.count);
+      } else if (sortMode === 'name-asc') {
+        sortedRecords.sort((a, b) => a.counterName.localeCompare(b.counterName) || b.count - a.count);
+      }
+
+      historyContent.innerHTML = `
+        <div class="history-date-group">
+          ${sortedRecords
+            .map(
+              r => `
+            <div class="history-item">
+              <div>
+                <div class="history-item-date">${r.nominalDate}</div>
+                <div class="history-item-counter">${escapeHtml(r.counterName)}</div>
+              </div>
+              <span class="history-item-count">${r.count}</span>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+      `;
+    }
   }
 
   // Settings modal
